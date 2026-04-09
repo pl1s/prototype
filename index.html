@@ -1,0 +1,2797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Document Generation Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<style>
+/* ============================================ */
+/* COLORS - Exact palette from design spec      */
+/* ============================================ */
+:root {
+  --primary-50: #e0fffe;
+  --primary-100: #ccf3f1;
+  --primary-200: #99e6e4;
+  --primary-300: #66dad6;
+  --primary-400: #33cdc9;
+  --primary-500: #00c1bb;
+  --primary-600: #009a96;
+  --primary-700: #007470;
+  --secondary-50: #f1f3fe;
+  --secondary-100: #e2e5fc;
+  --secondary-200: #c6cbf9;
+  --secondary-500: #707ef0;
+  --secondary-700: #434c90;
+  --surface: #ffffff;
+  --surface-overlay: rgba(33, 33, 33, 0.05);
+  --outline: rgba(0, 0, 0, 0.12);
+  --text-high: rgba(0, 0, 0, 0.87);
+  --text-medium: rgba(0, 0, 0, 0.6);
+  --text-disabled: rgba(0, 0, 0, 0.38);
+  --status-approved-bg: rgba(92, 228, 89, 0.2);
+  --status-approved-fg: #1b5e20;
+  --status-in-review-bg: rgba(0, 133, 255, 0.2);
+  --status-in-review-fg: #0d47a1;
+  --status-draft-bg: rgba(187, 187, 187, 0.2);
+  --status-draft-fg: #424242;
+  --status-rejected-bg: rgba(239, 6, 20, 0.2);
+  --status-rejected-fg: #b71c1c;
+  --status-expired-bg: rgba(255, 92, 0, 0.2);
+  --status-expired-fg: #e65100;
+  --error: #ef0614;
+  --success: #22ca29;
+  --warning: #f49300;
+}
+
+/* ============================================ */
+/* RESET & BASE                                 */
+/* ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: #e8eaf0;
+  color: var(--text-high);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 16px;
+}
+
+/* ============================================ */
+/* TYPOGRAPHY                                   */
+/* ============================================ */
+.headline-5 { font-size: 24px; font-weight: 400; line-height: 32px; }
+.headline-6 { font-size: 20px; font-weight: 400; line-height: 28px; }
+.subtitle-1 { font-size: 16px; font-weight: 500; line-height: 24px; }
+.body-1 { font-size: 16px; font-weight: 400; line-height: 24px; }
+.body-2 { font-size: 14px; font-weight: 400; line-height: 20px; }
+.caption { font-size: 12px; font-weight: 400; line-height: 16px; }
+.status-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ============================================ */
+/* INSTRUCTIONS BANNER                          */
+/* ============================================ */
+#instructions-banner {
+  background: #fff3cd;
+  padding: 16px 20px;
+  border-radius: 8px;
+  border-left: 4px solid #ffc107;
+  width: 100%;
+  max-width: 1600px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+#instructions-banner h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+#instructions-banner ol { padding-left: 20px; margin-bottom: 8px; }
+#instructions-banner li { margin-bottom: 4px; }
+#instructions-banner p { margin-bottom: 10px; }
+.hide-btn {
+  background: #ffc107;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+}
+.hide-btn:hover { background: #e0a800; }
+
+/* ============================================ */
+/* DIALOG WRAPPER                               */
+/* ============================================ */
+.dialog-wrapper {
+  width: 100%;
+  max-width: 1600px;
+  background: var(--surface);
+  border-radius: 20px 20px 10px 10px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 110px);
+}
+.dialog-header {
+  background: var(--secondary-50);
+  height: 42px;
+  min-height: 42px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--outline);
+}
+.dialog-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-high);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dialog-title .icon { font-size: 16px; }
+.dialog-controls { display: flex; gap: 8px; }
+.dialog-controls button {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-medium);
+  transition: background 0.15s;
+}
+.dialog-controls button:hover { background: var(--secondary-100); }
+
+/* ============================================ */
+/* LAYOUT - 3 Columns                           */
+/* ============================================ */
+.document-studio {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  background: var(--surface);
+  padding: 21px;
+  overflow: hidden;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--outline);
+}
+.column-1 { width: 25%; min-width: 300px; }
+.column-2 { width: 25%; min-width: 270px; }
+.column-3 { flex: 1; min-width: 400px; }
+.column-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--outline);
+  background: var(--secondary-50);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--secondary-700);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Collapse button inside header */
+.col-collapse-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text-medium);
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.col-collapse-btn:hover { background: var(--secondary-100); color: var(--secondary-700); }
+
+/* col-body-wrap: hides content when collapsed */
+.col-body-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* Collapsed column */
+.column.collapsed {
+  min-width: 0 !important;
+  width: 38px !important;
+  flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+.column.collapsed .col-body-wrap { display: none; }
+.column.collapsed .column-header {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 14px 0;
+  gap: 0;
+  height: 100%;
+  border-bottom: none;
+  cursor: pointer;
+}
+.column.collapsed .col-header-text { display: none; }
+.column.collapsed .col-label-vertical { display: none; }
+.col-label-vertical { display: none; }
+.column.collapsed .col-collapse-btn { display: none; }
+.col-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.column.collapsed .col-icon { font-size: 18px; margin-top: 2px; }
+
+/* document-studio flex transition */
+.document-studio { transition: gap 0.2s; }
+.column-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* Custom scrollbar */
+.column-body::-webkit-scrollbar { width: 6px; }
+.column-body::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+.column-body::-webkit-scrollbar-thumb:hover { background: #b0b0b0; }
+
+/* ============================================ */
+/* COLUMN 1: SOURCE DOCUMENTS                   */
+/* ============================================ */
+.search-area { padding: 12px 14px; border-bottom: 1px solid var(--outline); }
+.search-input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  outline: none;
+  background: var(--surface);
+  transition: border 0.15s;
+}
+.search-input:focus { border-color: var(--primary-500); }
+.search-wrapper {
+  position: relative;
+}
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--text-disabled);
+  pointer-events: none;
+}
+
+.filters-area {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--outline);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--secondary-50);
+  border-radius: 16px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  color: var(--text-medium);
+  user-select: none;
+}
+.filter-chip:hover { background: var(--secondary-100); }
+.filter-chip.active {
+  background: var(--primary-50);
+  border-color: var(--primary-500);
+  color: var(--primary-700);
+}
+.filter-chip .remove {
+  margin-left: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+.filter-chip .remove:hover { opacity: 1; }
+
+.filter-select {
+  padding: 3px 8px;
+  border-radius: 16px;
+  border: 1px solid var(--outline);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--text-medium);
+  outline: none;
+}
+
+.doc-list { flex: 1; overflow-y: auto; }
+.doc-list::-webkit-scrollbar { width: 6px; }
+.doc-list::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+
+.doc-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--outline);
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border-left: 4px solid transparent;
+}
+.doc-row:hover { background: var(--secondary-100); }
+.doc-row.selected {
+  background: var(--secondary-50);
+  border-left-color: var(--primary-500);
+}
+.doc-checkbox {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary-500);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.doc-info { flex: 1; min-width: 0; }
+.doc-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-high);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.doc-number {
+  font-size: 11px;
+  color: var(--text-medium);
+  font-weight: 500;
+}
+.doc-version {
+  font-size: 11px;
+  color: var(--text-disabled);
+}
+.type-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.type-scientific_journal { background: #e3f2fd; color: #1565c0; }
+.type-component { background: #fce4ec; color: #c62828; }
+.type-srd { background: #f3e5f5; color: #6a1b9a; }
+
+.status-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.status-approved { background: var(--status-approved-bg); color: var(--status-approved-fg); }
+.status-in-review { background: var(--status-in-review-bg); color: var(--status-in-review-fg); }
+.status-draft { background: var(--status-draft-bg); color: var(--status-draft-fg); }
+.status-rejected { background: var(--status-rejected-bg); color: var(--status-rejected-fg); }
+.status-expired { background: var(--status-expired-bg); color: var(--status-expired-fg); }
+
+.doc-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--outline);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  background: var(--surface);
+}
+.doc-count { font-weight: 500; color: var(--primary-700); }
+.clear-btn {
+  background: none;
+  border: none;
+  color: var(--primary-500);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+}
+.clear-btn:hover { text-decoration: underline; }
+
+.doc-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 600;
+  background: #e8eaf6;
+  color: #3949ab;
+  letter-spacing: 0.2px;
+}
+.doc-access-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 600;
+}
+.doc-access-free { background: rgba(29,185,84,0.12); color: #0d6b3a; }
+.doc-access-purchased { background: rgba(92,228,89,0.18); color: #1b5e20; }
+.doc-access-locked { background: rgba(255,165,0,0.13); color: #8b5e00; }
+
+/* ============================================ */
+/* ADD DOCUMENT BUTTON                          */
+/* ============================================ */
+.add-doc-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--primary-50);
+  border: 1.5px dashed var(--primary-400);
+  border-radius: 8px;
+  color: var(--primary-700);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  justify-content: center;
+}
+.add-doc-btn:hover {
+  background: var(--primary-100);
+  border-color: var(--primary-500);
+}
+
+/* ============================================ */
+/* ADD DOCUMENT DIALOG                          */
+/* ============================================ */
+.adddoc-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.adddoc-overlay.open { display: flex; }
+.adddoc-modal {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 28px 24px;
+  width: 560px;
+  max-width: 95vw;
+  position: relative;
+  box-shadow: 0 16px 60px rgba(0,0,0,0.22);
+  animation: adddocIn 0.2s ease;
+}
+@keyframes adddocIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.adddoc-close {
+  position: absolute;
+  top: 14px; right: 18px;
+  background: none; border: none;
+  font-size: 22px; color: var(--text-medium);
+  cursor: pointer; line-height: 1;
+}
+.adddoc-close:hover { color: var(--text-high); }
+.adddoc-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-high);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.adddoc-subtitle {
+  font-size: 13px;
+  color: var(--text-medium);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Search row */
+.adddoc-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f4f6ff;
+  border: 1.5px solid var(--secondary-200);
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+}
+.adddoc-db-wrap { position: relative; flex-shrink: 0; }
+.adddoc-db-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: #fff;
+  border: 1px solid var(--secondary-200);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--secondary-700);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.adddoc-db-btn:hover { background: var(--secondary-50); }
+.adddoc-caret { font-size: 10px; color: var(--text-medium); }
+.adddoc-db-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: #fff;
+  border: 1px solid var(--outline);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+  min-width: 140px;
+  z-index: 100;
+  overflow: hidden;
+}
+.adddoc-db-menu.open { display: block; }
+.adddoc-db-option {
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-high);
+  transition: background 0.12s;
+}
+.adddoc-db-option:hover { background: var(--secondary-50); }
+.adddoc-db-option.active { font-weight: 600; color: var(--secondary-700); }
+.adddoc-db-check { margin-left: auto; color: var(--primary-500); font-weight: 700; }
+
+.adddoc-search-wrap { flex: 1; position: relative; }
+.adddoc-search-icon {
+  position: absolute; left: 8px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px; pointer-events: none;
+}
+.adddoc-search-input {
+  width: 100%;
+  padding: 7px 10px 7px 28px;
+  border: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  outline: none;
+  color: var(--text-high);
+}
+.adddoc-search-input::placeholder { color: var(--text-disabled); }
+.adddoc-search-go {
+  background: var(--secondary-500);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  width: 32px; height: 32px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.adddoc-search-go:hover { background: var(--secondary-700); }
+
+/* Search results */
+.adddoc-results {
+  border: 1px solid var(--outline);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.adddoc-result-item {
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--outline);
+  cursor: pointer;
+  transition: background 0.12s;
+  position: relative;
+}
+.adddoc-result-item:last-child { border-bottom: none; }
+.adddoc-result-item:hover:not(.locked) { background: var(--secondary-50); }
+.adddoc-result-item.selected { background: var(--primary-50); }
+.adddoc-result-item.locked { cursor: default; background: #fafafa; }
+.adddoc-result-item.locked:hover { background: #f5f5f5; }
+
+.adddoc-result-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 24px;
+  padding-top: 2px;
+}
+.adddoc-result-index {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-disabled);
+  line-height: 1;
+}
+.adddoc-result-lock { font-size: 14px; line-height: 1; }
+.adddoc-result-cb { accent-color: var(--primary-500); width: 15px; height: 15px; }
+
+.adddoc-result-info { flex: 1; min-width: 0; }
+.adddoc-result-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a5296;
+  margin-bottom: 3px;
+  line-height: 1.4;
+}
+.adddoc-result-title.locked-title { color: var(--text-medium); }
+.adddoc-result-authors {
+  font-size: 11px;
+  color: var(--text-medium);
+  margin-bottom: 3px;
+  line-height: 1.3;
+}
+.adddoc-result-journal {
+  margin-bottom: 5px;
+}
+.adddoc-journal-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a7a4a;
+}
+.adddoc-citation-text {
+  font-size: 11px;
+  color: var(--text-medium);
+}
+.adddoc-result-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+.adddoc-pmid-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-medium);
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.adddoc-free-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #0d6b3a;
+  background: rgba(29, 185, 84, 0.12);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.adddoc-locked-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #8b5e00;
+  background: rgba(255, 165, 0, 0.13);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.adddoc-result-abstract {
+  font-size: 11px;
+  color: var(--text-medium);
+  line-height: 1.5;
+}
+
+.adddoc-result-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding-top: 2px;
+}
+.adddoc-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  border: 1.5px solid var(--primary-400);
+  color: var(--primary-700);
+  background: var(--primary-50);
+  transition: all 0.15s;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.adddoc-view-btn:hover {
+  background: var(--primary-100);
+  border-color: var(--primary-500);
+}
+.adddoc-view-btn-locked {
+  border-color: #ccc;
+  color: var(--text-medium);
+  background: #f5f5f5;
+}
+.adddoc-view-btn-locked:hover {
+  background: #ececec;
+  border-color: #bbb;
+}
+.adddoc-buy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1.5px solid #f59e0b;
+  color: #92400e;
+  background: #fffbeb;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.15s;
+  width: 100%;
+  justify-content: center;
+}
+.adddoc-buy-btn:hover {
+  background: #fef3c7;
+  border-color: #d97706;
+}
+
+/* Locked tooltip */
+.locked-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: normal;
+  max-width: 260px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  animation: fadeInTip 0.15s ease;
+}
+.locked-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #333;
+}
+@keyframes fadeInTip {
+  from { opacity:0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity:1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Divider */
+.adddoc-divider {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--text-disabled); font-size: 12px;
+  margin-bottom: 14px;
+}
+.adddoc-divider::before,.adddoc-divider::after {
+  content:''; flex:1; height:1px; background: var(--outline);
+}
+
+/* Drop zone */
+.adddoc-dropzone {
+  border: 2px dashed var(--outline);
+  border-radius: 14px;
+  padding: 24px 20px 18px;
+  text-align: center;
+  background: #fafafa;
+  transition: all 0.15s;
+  margin-bottom: 18px;
+}
+.adddoc-dropzone.dragover {
+  border-color: var(--primary-400);
+  background: var(--primary-50);
+}
+.adddoc-drop-icon { font-size: 28px; margin-bottom: 6px; }
+.adddoc-drop-text { font-size: 15px; font-weight: 500; color: var(--text-high); margin-bottom: 3px; }
+.adddoc-drop-sub { font-size: 12px; color: var(--text-medium); margin-bottom: 14px; }
+.adddoc-upload-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.adddoc-upload-btn {
+  padding: 7px 14px;
+  border: 1px solid var(--outline);
+  border-radius: 20px;
+  background: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-high);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.adddoc-upload-btn:hover { background: var(--secondary-50); border-color: var(--secondary-200); }
+
+/* Footer */
+.adddoc-footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+}
+.adddoc-cancel-btn {
+  padding: 9px 20px; border-radius: 20px;
+  border: 1px solid var(--outline); background: #fff;
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  color: var(--text-medium); cursor: pointer;
+  transition: all 0.15s;
+}
+.adddoc-cancel-btn:hover { background: var(--surface-overlay); }
+.adddoc-add-btn {
+  padding: 9px 22px; border-radius: 20px;
+  border: none; background: var(--secondary-500);
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  color: #fff; cursor: pointer;
+  transition: all 0.15s;
+}
+.adddoc-add-btn:hover:not(:disabled) { background: var(--secondary-700); }
+.adddoc-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ============================================ */
+/* COLUMN 2: CONFIGURATION                      */
+/* ============================================ */
+.config-body { padding: 14px; }
+
+.type-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.type-card {
+  flex: 1;
+  padding: 12px 10px;
+  border-radius: 10px;
+  border: 2px solid var(--outline);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  background: var(--surface);
+}
+.type-card:hover { border-color: var(--secondary-200); background: var(--secondary-50); }
+.type-card.active {
+  border-color: var(--secondary-500);
+  background: var(--secondary-50);
+  box-shadow: 0 0 0 1px var(--secondary-500);
+}
+.type-card-icon { font-size: 24px; margin-bottom: 4px; }
+.type-card-label { font-size: 12px; font-weight: 600; color: var(--text-high); margin-bottom: 2px; }
+.type-card-desc { font-size: 10px; color: var(--text-medium); line-height: 1.3; }
+
+.config-form { display: flex; flex-direction: column; gap: 14px; }
+.form-group label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-medium);
+  margin-bottom: 5px;
+}
+.form-input, .form-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  outline: none;
+  background: var(--surface);
+  transition: border 0.15s;
+}
+.form-input:focus, .form-select:focus { border-color: var(--primary-500); }
+
+.source-summary {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--outline);
+}
+.source-summary-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-medium);
+  margin-bottom: 8px;
+}
+.source-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  background: var(--secondary-50);
+  font-size: 12px;
+}
+.source-item .drag-handle {
+  cursor: grab;
+  color: var(--text-disabled);
+  font-size: 14px;
+}
+.source-item .source-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-high);
+}
+.source-item .remove-source {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-disabled);
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.source-item .remove-source:hover { color: var(--error); }
+
+.validation-msg {
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.validation-msg.warning {
+  background: rgba(244, 147, 0, 0.12);
+  color: #e65100;
+}
+.validation-msg.info {
+  background: rgba(0, 133, 255, 0.08);
+  color: #0d47a1;
+}
+
+.action-buttons {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+}
+.generate-btn {
+  flex: 1;
+  background: var(--secondary-500);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 10px 20px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.generate-btn:hover:not(:disabled) { background: var(--secondary-700); }
+.generate-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.reset-btn {
+  background: transparent;
+  color: var(--text-medium);
+  border: 1px solid var(--outline);
+  border-radius: 50px;
+  padding: 10px 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.reset-btn:hover { background: var(--surface-overlay); }
+
+.mandatory-q-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1.5px dashed var(--outline);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-medium);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  justify-content: center;
+}
+.mandatory-q-btn:hover {
+  border-color: var(--secondary-400);
+  color: var(--secondary-700);
+  background: var(--secondary-50);
+}
+
+/* Multi-select dropdown */
+.multiselect-wrap { position: relative; }
+.multiselect-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-high);
+  transition: border 0.15s;
+  user-select: none;
+}
+.multiselect-trigger:hover { border-color: var(--primary-500); }
+.multiselect-caret { font-size: 10px; color: var(--text-medium); flex-shrink: 0; }
+.multiselect-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid var(--outline);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  z-index: 50;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.multiselect-dropdown.open { display: block; }
+.multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.multiselect-option:hover { background: var(--secondary-50); }
+.multiselect-option input { accent-color: var(--primary-500); }
+
+/* Progress overlay */
+.progress-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: 10px;
+}
+.progress-card {
+  background: white;
+  padding: 28px;
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+  min-width: 280px;
+  text-align: center;
+}
+.progress-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.progress-phase { font-size: 12px; color: var(--text-medium); margin-bottom: 12px; }
+.progress-bar { height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.progress-bar-fill { height: 100%; background: var(--primary-500); transition: width 0.3s ease; width: 0%; }
+.progress-pct { font-size: 11px; color: var(--text-disabled); }
+.cancel-gen-btn {
+  margin-top: 12px;
+  background: none;
+  border: 1px solid var(--outline);
+  border-radius: 50px;
+  padding: 5px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-medium);
+}
+
+/* ============================================ */
+/* COLUMN 3: CHAT & PREVIEW                     */
+/* ============================================ */
+.col3-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--outline);
+  background: var(--secondary-50);
+}
+.col3-tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--text-medium);
+  transition: all 0.15s;
+  border-bottom: 2px solid transparent;
+  font-family: 'Inter', sans-serif;
+}
+.col3-tab:hover { color: var(--text-high); }
+.col3-tab.active {
+  color: var(--secondary-500);
+  border-bottom-color: var(--secondary-500);
+}
+
+.chat-panel, .preview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.preview-panel { display: none; }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-messages::-webkit-scrollbar { width: 6px; }
+.chat-messages::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+
+.message {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  word-break: break-word;
+}
+.message-user {
+  align-self: flex-end;
+  background: var(--primary-500);
+  color: white;
+  border-bottom-right-radius: 3px;
+}
+.message-assistant {
+  align-self: flex-start;
+  background: #f2f2f7;
+  color: var(--text-high);
+  border-bottom-left-radius: 3px;
+}
+.message-assistant .msg-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--secondary-500);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.message-source {
+  align-self: flex-start;
+  background: var(--secondary-100);
+  color: var(--text-high);
+  font-size: 12px;
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.message-source strong { font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--secondary-700); }
+
+.typing-indicator {
+  align-self: flex-start;
+  display: flex;
+  gap: 4px;
+  padding: 12px 18px;
+  background: #f2f2f7;
+  border-radius: 10px;
+  border-bottom-left-radius: 3px;
+}
+.typing-dot {
+  width: 7px; height: 7px;
+  background: #b0b0b0;
+  border-radius: 50%;
+  animation: typingBounce 1.2s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+}
+
+.chat-input-area {
+  padding: 12px 16px;
+  border-top: 1px solid var(--outline);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--surface);
+}
+.chat-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--outline);
+  border-radius: 24px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: border 0.15s;
+}
+.chat-input:focus { border-color: var(--primary-500); }
+.chat-input::placeholder { color: var(--text-disabled); }
+.chat-send-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary-500);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.chat-send-btn:hover { background: var(--primary-600); }
+.chat-send-btn:disabled { background: var(--text-disabled); cursor: not-allowed; }
+
+/* Preview panel */
+.preview-toolbar {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--outline);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.preview-toolbar button {
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.preview-toolbar .primary-action {
+  background: var(--primary-500);
+  color: white;
+  border: none;
+}
+.preview-toolbar .primary-action:hover { background: var(--primary-600); }
+.preview-toolbar .secondary-action {
+  background: transparent;
+  color: var(--text-medium);
+  border: 1px solid var(--outline);
+}
+.preview-toolbar .secondary-action:hover { background: var(--surface-overlay); }
+
+.preview-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.preview-content::-webkit-scrollbar { width: 6px; }
+.preview-content::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+.preview-content h1 { font-size: 22px; font-weight: 600; margin: 0 0 12px; color: var(--text-high); }
+.preview-content h2 { font-size: 17px; font-weight: 600; margin: 20px 0 8px; color: var(--secondary-700); border-bottom: 1px solid var(--outline); padding-bottom: 4px; }
+.preview-content h3 { font-size: 15px; font-weight: 600; margin: 14px 0 6px; }
+.preview-content p { margin-bottom: 10px; }
+.preview-content ul, .preview-content ol { margin: 8px 0 10px 20px; }
+.preview-content li { margin-bottom: 4px; }
+.preview-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+.preview-content th, .preview-content td { padding: 8px 10px; border: 1px solid var(--outline); text-align: left; }
+.preview-content th { background: var(--secondary-50); font-weight: 600; font-size: 12px; }
+.preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-disabled);
+  font-size: 14px;
+  text-align: center;
+  padding: 40px;
+}
+
+/* ============================================ */
+/* RESPONSIVE                                   */
+/* ============================================ */
+@media (max-width: 1200px) {
+  .column-1 { min-width: 260px; }
+  .column-2 { min-width: 240px; }
+  .column-3 { min-width: 320px; }
+}
+@media (max-width: 768px) {
+  .document-studio { flex-direction: column; overflow-y: auto; }
+  .column-1, .column-2, .column-3 { width: 100%; min-width: unset; min-height: 300px; }
+  .dialog-wrapper { height: auto; min-height: 100vh; }
+}
+
+/* ============================================ */
+/* ANIMATIONS                                   */
+/* ============================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.message { animation: fadeIn 0.25s ease; }
+
+/* ============================================ */
+/* SORTABLE drag ghost                          */
+/* ============================================ */
+.sortable-ghost {
+  opacity: 0.4;
+  border: 2px dashed var(--secondary-500);
+  border-radius: 6px;
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- INSTRUCTIONS BANNER                          -->
+<!-- ============================================ -->
+<div id="instructions-banner">
+  <h3>📋 How to Use This Prototype</h3>
+  <ol>
+    <li><strong>Column 1 (Left)</strong>: Search and select source documents using checkboxes</li>
+    <li><strong>Column 2 (Middle)</strong>: Choose document type (SRD or Component) and configure settings</li>
+    <li><strong>Column 3 (Right)</strong>: Chat with AI assistant "Aimie" to refine the generated document</li>
+  </ol>
+  <p><strong>Try this flow:</strong> Select 3 scientific journals → Choose "SRD Document" → Enter a title → Click "Generate Document" → Wait for generation → Ask AI to "expand the safety section"</p>
+  <button class="hide-btn" onclick="document.getElementById('instructions-banner').style.display='none'">Got it! Hide Instructions</button>
+</div>
+
+<!-- ============================================ -->
+<!-- DIALOG WRAPPER                               -->
+<!-- ============================================ -->
+<div class="dialog-wrapper">
+  <!-- Dialog Header -->
+  <div class="dialog-header">
+    <div class="dialog-title">
+      <svg width="99" height="16" viewBox="0 0 132 22" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_884_200)"><mask id="mask0_884_200" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="0" y="0" width="132" height="22"><path d="M132 0.5V21.5H0V0.5H132Z" fill="white"/></mask><g mask="url(#mask0_884_200)"><path d="M53.2773 11.9901C53.6733 9.30656 55.4259 7.71167 58.0659 7.71167C60.7059 7.71167 62.4585 9.30656 62.8445 11.9901H53.2773ZM58.0659 4.9043C53.4437 4.9043 50.0527 8.32288 50.0527 13.2026C50.0527 18.0823 53.4326 21.5009 58.0659 21.5009C61.8118 21.5009 64.6393 19.6772 65.6509 16.3935H62.1346C61.4879 17.8337 60.1835 18.6925 58.1901 18.6925C55.457 18.6925 53.6312 17.0677 53.2451 14.2902H66.0059C66.0473 13.9277 66.068 13.5651 66.068 13.2026C66.068 8.32288 62.6881 4.9043 58.0548 4.9043" fill="#090C1D"/><path d="M8.20064 4.90253C6.05203 4.90253 4.25728 5.89726 3.25563 7.74084V5.2131H0V21.1775H3.25563V12.4647C3.25563 9.30479 4.75755 7.70989 7.18901 7.70989C9.62047 7.70989 11.1335 9.30479 11.1335 12.4647V21.1775H14.388V11.8226C14.388 7.12963 11.748 4.89258 8.20064 4.89258" fill="#090C1D"/><path d="M20.0848 11.9901C20.4819 9.30656 22.2345 7.71167 24.8745 7.71167C27.5145 7.71167 29.2671 9.30656 29.6631 11.9901H20.0848ZM24.8745 4.9043C20.2523 4.9043 16.8613 8.32288 16.8613 13.2026C16.8613 18.0823 20.2412 21.5009 24.8745 21.5009C28.6204 21.5009 31.4479 19.6772 32.4595 16.3935H28.9432C28.2965 17.8337 26.992 18.6925 24.9998 18.6925C22.2656 18.6925 20.4409 17.0677 20.0537 14.2902H32.8145C32.8455 13.9376 32.8777 13.5861 32.8777 13.2026C32.8777 8.32288 29.4967 4.9043 24.8634 4.9043" fill="#090C1D"/><path d="M103.483 5.46224C102.043 5.87671 101.219 6.72666 100.447 8.09277V5.22461H97.1914V21.1901H100.447V13.1814C100.447 9.89766 102.273 8.24087 105.392 8.24087H107.115V5.24561H105.32C104.693 5.24561 104.078 5.31856 103.473 5.48435" fill="#090C1D"/><path d="M76.9088 4.90253C74.7602 4.90253 72.9654 5.89726 71.9638 7.74084V5.2131H68.707V21.1775H71.9627V12.4647C71.9627 9.30479 73.4546 7.70989 75.906 7.70989C78.3575 7.70989 79.8505 9.30479 79.8505 12.4647V21.1775H83.1061V11.8226C83.1061 7.12963 80.4661 4.89258 76.9188 4.89258" fill="#090C1D"/><path d="M113.031 5.22461H109.775V21.1912H113.031V5.22461Z" fill="#090C1D"/><path d="M94.104 8.03237V5.225H89.4186V0.5H86.1641V8.03237L86.1752 18.2362H89.4086L89.4197 8.03126L94.104 8.03237Z" fill="#090C1D"/><path d="M94.2307 18.2363H89.4199V21.1896H94.2296L94.2307 18.2363Z" fill="#090C1D"/><path d="M127.378 17.1605C126.929 17.6468 126.376 18.0204 125.77 18.2791C124.451 18.8017 122.982 18.8057 121.659 18.2901C121.043 18.0372 120.488 17.6554 120.032 17.1705C119.57 16.674 119.215 16.0888 118.988 15.4507C118.51 14.0254 118.51 12.4836 118.988 11.0584C119.215 10.4203 119.57 9.8351 120.032 9.33858C120.491 8.85227 121.044 8.47869 121.659 8.23C122.316 7.96561 123.018 7.83157 123.726 7.83542C124.425 7.83542 125.124 7.96032 125.77 8.23C126.379 8.48211 126.926 8.85996 127.378 9.33858C128.285 10.3112 128.765 11.6696 128.765 13.2545C128.765 14.8395 128.285 16.1967 127.378 17.1705V17.1605ZM128.786 5.39058V7.83542L128.171 7.15237C127.044 5.899 125.082 5.059 123.309 5.059C122.203 5.04825 121.105 5.24898 120.074 5.65032C119.141 6.02228 118.298 6.58736 117.601 7.30821C116.898 8.04888 116.358 8.92699 116.014 9.88679C115.263 12.0726 115.263 14.4453 116.014 16.6311C116.369 17.5949 116.902 18.4758 117.601 19.2119C118.296 19.9354 119.14 20.5009 120.074 20.8698C121.103 21.2762 122.202 21.4767 123.309 21.46C125.082 21.46 127.044 20.62 128.171 19.3666L128.786 18.6836V21.1074H132V5.39058H128.786Z" fill="#090C1D"/><path d="M115.891 0.5H109.766V3.46211H115.891V0.5Z" fill="#5AB9B8"/><path d="M49.5614 5.17298H45.8366L41.5793 10.5689L37.3231 5.17188H33.5983L39.7125 12.9308L33.1602 21.2402H36.885L41.5793 15.2828L46.2747 21.2402H49.9996L43.4373 12.9308L49.5614 5.17298Z" fill="#090C1D"/></g></g><defs><clipPath id="clip0_884_200"><rect width="132" height="21" fill="white" transform="translate(0 0.5)"/></clipPath></defs></svg>
+    </div>
+    <div class="dialog-controls">
+      <button title="Minimize" onclick="alert('Minimize: In production, this would minimize the dialog.')">−</button>
+      <button title="Close" onclick="alert('Close: In production, this would close the dialog.')">×</button>
+    </div>
+  </div>
+
+  <!-- 3-Column Layout -->
+  <div class="document-studio">
+
+    <!-- ======================================== -->
+    <!-- COLUMN 1: SOURCE DOCUMENTS               -->
+    <!-- ======================================== -->
+    <div class="column column-1" id="col1">
+      <div class="column-header" onclick="expandColIfCollapsed(1)">
+        <span class="col-icon">📁</span>
+        <span class="col-header-text">Source Documents</span>
+        <span class="col-label-vertical">Sources</span>
+        <button class="col-collapse-btn" onclick="event.stopPropagation(); toggleCol(1)" title="Collapse">‹</button>
+      </div>
+      <div class="col-body-wrap" id="col1Body">
+      <div class="search-area">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="docSearch" placeholder="Search documents..." oninput="handleSearch()">
+        </div>
+        <button class="add-doc-btn" onclick="openAddDocDialog()">
+          <span style="font-size:15px;line-height:1;">⬇</span> Import Document
+        </button>
+      </div>
+      <div class="filters-area" id="filtersArea">
+        <select class="filter-select" id="filterType" onchange="applyFilters()">
+          <option value="">All Types</option>
+          <option value="scientific_journal">Scientific Journal</option>
+          <option value="component">Component</option>
+          <option value="srd">SRD</option>
+        </select>
+        <select class="filter-select" id="filterStatus" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="approved" selected>Approved</option>
+          <option value="in-review">In Review</option>
+          <option value="draft">Draft</option>
+          <option value="expired">Expired</option>
+        </select>
+      </div>
+      <div class="doc-list" id="docList"></div>
+      <div class="doc-footer">
+        <span class="doc-count" id="docCount">0 selected</span>
+        <button class="clear-btn" onclick="clearAllSelections()">Clear All</button>
+      </div>
+      </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- COLUMN 2: CONFIGURATION                  -->
+    <!-- ======================================== -->
+    <div class="column column-2" id="col2" style="position: relative;">
+      <div class="column-header" onclick="expandColIfCollapsed(2)">
+        <span class="col-icon">⚙️</span>
+        <span class="col-header-text">Configuration</span>
+        <span class="col-label-vertical">Config</span>
+        <button class="col-collapse-btn" onclick="event.stopPropagation(); toggleCol(2)" title="Collapse">‹</button>
+      </div>
+      <div class="col-body-wrap" id="col2Body">
+      <div class="column-body config-body" id="configBody">
+        <!-- Type Cards -->
+        <div class="type-cards">
+          <div class="type-card" id="cardSrd" onclick="selectType('srd')">
+            <div class="type-card-icon">📑</div>
+            <div class="type-card-label">SRD Document</div>
+            <div class="type-card-desc">Generate scientific response from journals</div>
+          </div>
+          <div class="type-card" id="cardComponent" onclick="selectType('component')">
+            <div class="type-card-icon">🧩</div>
+            <div class="type-card-label">Component</div>
+            <div class="type-card-desc">Create reusable content from sources</div>
+          </div>
+          <div class="type-card" id="cardFaq" onclick="selectType('faq')">
+            <div class="type-card-icon">❓</div>
+            <div class="type-card-label">FAQ</div>
+            <div class="type-card-desc">Generate frequently asked questions</div>
+          </div>
+          <div class="type-card" id="cardMsl" onclick="selectType('msl')">
+            <div class="type-card-icon">📊</div>
+            <div class="type-card-label">MSL Deck</div>
+            <div class="type-card-desc">Create medical science liaison slides</div>
+          </div>
+        </div>
+
+        <!-- Dynamic Form -->
+        <div class="config-form" id="configForm" style="display:none;"></div>
+
+        <!-- Source Documents Summary -->
+        <div class="source-summary" id="sourceSummary" style="display:none;">
+          <div class="source-summary-header">Selected Sources (<span id="sourceCount">0</span>)</div>
+          <div id="sourceList"></div>
+        </div>
+
+        <!-- Validation -->
+        <div id="validationArea"></div>
+
+        <!-- Actions -->
+        <div class="action-buttons" id="actionButtons" style="display:none;">
+          <button class="generate-btn" id="generateBtn" disabled onclick="startGeneration()">
+            ✨ Generate Document
+          </button>
+          <button class="reset-btn" onclick="resetConfig()">Reset</button>
+        </div>
+      </div>
+
+      </div><!-- /col2Body -->
+
+      <!-- Progress Overlay -->
+      <div class="progress-overlay" id="progressOverlay" style="display:none;">
+        <div class="progress-card">
+          <h4 id="progressTitle">Generating Document...</h4>
+          <div class="progress-phase" id="progressPhase">Analyzing sources...</div>
+          <div class="progress-bar"><div class="progress-bar-fill" id="progressFill"></div></div>
+          <div class="progress-pct" id="progressPct">0%</div>
+          <button class="cancel-gen-btn" onclick="cancelGeneration()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- COLUMN 3: CHAT & PREVIEW                 -->
+    <!-- ======================================== -->
+    <div class="column column-3">
+      <div class="col3-tabs">
+        <button class="col3-tab active" id="tabPreview" onclick="switchTab('preview')">📄 Preview</button>
+        <button class="col3-tab" id="tabChat" onclick="switchTab('chat')">💬 Chat</button>
+      </div>
+
+      <!-- Preview Panel -->
+      <div class="preview-panel" id="previewPanel" style="display:flex;">
+        <div class="preview-toolbar" id="previewToolbar">
+          <button class="secondary-action" onclick="alert('Edit Section: In production, this opens a section editor.')">✏️ Edit Section</button>
+          <button class="primary-action" onclick="alert('Download: In production, this downloads a DOCX file.')">⬇️ Download DOCX</button>
+          <button class="secondary-action" onclick="alert('Save to CMS: In production, this saves as a new CMS document.')">💾 Save to CMS</button>
+          <button class="secondary-action" onclick="alert('Share: In production, this opens sharing options.')">🔗 Share</button>
+        </div>
+        <div class="preview-content" id="previewContent">
+          <div class="preview-empty">Generate a document to see the preview here.</div>
+        </div>
+      </div>
+
+      <!-- Chat Panel -->
+      <div class="chat-panel" id="chatPanel" style="display:none;">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+          <input type="text" class="chat-input" id="chatInput" placeholder="Ask Aimie to revise, expand, or refine..." onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">➤</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /document-studio -->
+</div><!-- /dialog-wrapper -->
+
+<!-- ============================================ -->
+<!-- ADD DOCUMENT DIALOG                         -->
+<!-- ============================================ -->
+<div class="adddoc-overlay" id="addDocOverlay" onclick="closeAddDocDialog(event)">
+  <div class="adddoc-modal" id="addDocModal">
+    <button class="adddoc-close" onclick="closeAddDocDialog()">×</button>
+    <div class="adddoc-title">Add Source Documents</div>
+    <div class="adddoc-subtitle">Search a database or upload files from your computer</div>
+
+    <!-- Web Search Row -->
+    <div class="adddoc-search-row">
+      <!-- DB Dropdown -->
+      <div class="adddoc-db-wrap" id="dbWrap">
+        <button class="adddoc-db-btn" id="dbBtn" onclick="toggleDbDropdown(event)">
+          <span class="adddoc-db-icon" id="dbIcon">🔬</span>
+          <span id="dbLabel">PubMed</span>
+          <span class="adddoc-caret">▾</span>
+        </button>
+        <div class="adddoc-db-menu" id="dbMenu">
+          <div class="adddoc-db-option active" id="optPubmed" onclick="selectDb('pubmed')">
+            <span>🔬</span> PubMed
+            <span class="adddoc-db-check" id="checkPubmed">✓</span>
+          </div>
+          <div class="adddoc-db-option" id="optEmbase" onclick="selectDb('embase')">
+            <span>🧬</span> Embase
+            <span class="adddoc-db-check" id="checkEmbase" style="display:none;">✓</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Input -->
+      <div class="adddoc-search-wrap">
+        <span class="adddoc-search-icon">🔍</span>
+        <input type="text" class="adddoc-search-input" id="addDocSearchInput"
+          placeholder="Search the database for new sources..."
+          onkeydown="if(event.key==='Enter')runDbSearch()">
+      </div>
+      <button class="adddoc-search-go" onclick="runDbSearch()">→</button>
+    </div>
+
+    <!-- Search Results (hidden by default) -->
+    <div class="adddoc-results" id="addDocResults" style="display:none;"></div>
+
+    <!-- Divider -->
+    <div class="adddoc-divider"><span>or upload files</span></div>
+
+    <!-- Drop Zone -->
+    <div class="adddoc-dropzone" id="addDocDropzone"
+      ondragover="event.preventDefault();this.classList.add('dragover')"
+      ondragleave="this.classList.remove('dragover')"
+      ondrop="handleDropzoneDrop(event)">
+      <div class="adddoc-drop-icon">📂</div>
+      <div class="adddoc-drop-text">Drop your files here</div>
+      <div class="adddoc-drop-sub">pdf, images, docs, audio, and more</div>
+      <div class="adddoc-upload-btns">
+        <label class="adddoc-upload-btn">
+          <input type="file" multiple style="display:none;" onchange="handleFileSelect(this)">
+          ⬆ Upload files
+        </label>
+        <button class="adddoc-upload-btn" onclick="alert('Websites: paste a URL to import from the web.')">🔗 Websites</button>
+        <button class="adddoc-upload-btn" onclick="alert('Drive: connect Google Drive to import.')">△ Drive</button>
+        <button class="adddoc-upload-btn" onclick="alert('Paste copied text to create a new source document.')">📋 Copied text</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="adddoc-footer">
+      <button class="adddoc-cancel-btn" onclick="closeAddDocDialog()">Cancel</button>
+      <button class="adddoc-add-btn" id="addDocConfirmBtn" disabled onclick="confirmAddDocs()">Add Selected</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================ */
+/* MOCK DATA                                    */
+/* ============================================ */
+const sampleDocuments = [
+  {
+    document_id: 1, version_id: 101,
+    name: "DRUGX_Efficacy_PhaseIII_2024",
+    title: "Efficacy of Drug X in Phase III Cardiovascular Trials",
+    number: "SJ-2024-0015",
+    type: "scientific_journal", subtype: "clinical_trial", classification: "phase_3",
+    status: "approved", major_version: 2, minor_version: 1,
+    related_products: ["Drug X"], countries: ["United States", "Germany"],
+    language: "English", therapeutic_area_diseases: ["Cardiovascular Disease"],
+    category: "Efficacy", topic: "Clinical Trial Results",
+    owner: "jane.doe", created_by: "john.smith",
+    created_at: 1702684800000, expires_at: 1735689600000, off_label: false
+  },
+  {
+    document_id: 2, version_id: 102,
+    name: "DRUGX_Safety_Profile_2024",
+    title: "Safety Profile Analysis 2024",
+    number: "SJ-2024-0022",
+    type: "scientific_journal", subtype: "safety_study", classification: "post_marketing",
+    status: "approved", major_version: 1, minor_version: 3,
+    related_products: ["Drug X"], countries: ["United States"],
+    language: "English", therapeutic_area_diseases: ["Cardiovascular Disease"],
+    category: "Safety", topic: "Adverse Events",
+    owner: "mike.chen", created_by: "mike.chen",
+    created_at: 1700524800000, expires_at: 1767225600000, off_label: false
+  },
+  {
+    document_id: 3, version_id: 103,
+    name: "DRUGX_Dosing_Component_v3",
+    title: "Complete Dosing Guidelines for Drug X",
+    number: "COMP-2024-0042",
+    type: "component", subtype: "dosing_information", classification: "standard_dosing",
+    status: "in-review", major_version: 3, minor_version: 0,
+    related_products: ["Drug X"], countries: null,
+    language: "English", therapeutic_area_diseases: ["Cardiovascular Disease"],
+    category: "Dosing", topic: "Adult Dosing",
+    owner: "sarah.johnson", created_by: "sarah.johnson",
+    created_at: 1699286400000, expires_at: 1767225600000, off_label: false
+  },
+  {
+    document_id: 4, version_id: 104,
+    name: "DRUGX_MechAction_Component",
+    title: "Mechanism of Action Component",
+    number: "COMP-2024-0033",
+    type: "component", subtype: "mechanism_of_action", classification: null,
+    status: "approved", major_version: 2, minor_version: 0,
+    related_products: ["Drug X"], countries: null,
+    language: "English", therapeutic_area_diseases: ["Cardiovascular Disease"],
+    category: "Efficacy", topic: "Pharmacology",
+    owner: "alex.brown", created_by: "alex.brown",
+    created_at: 1694217600000, expires_at: 1756598400000, off_label: false
+  },
+  {
+    document_id: 5, version_id: 105,
+    name: "DRUGX_AdverseEvents_Template",
+    title: "Adverse Events Response Template - Drug X",
+    number: "COMP-2024-0087",
+    type: "component", subtype: "safety_profile", classification: "adverse_events",
+    status: "approved", major_version: 1, minor_version: 2,
+    related_products: ["Drug X"], countries: ["United States"],
+    language: "English", therapeutic_area_diseases: ["Cardiovascular Disease"],
+    category: "Safety", topic: "Adverse Event Management",
+    owner: "mike.chen", created_by: "mike.chen",
+    created_at: 1693526400000, expires_at: 1756598400000, off_label: false
+  },
+  {
+    document_id: 6, version_id: 106,
+    name: "DRUGX_CV_Safety_Data",
+    title: "Cardiovascular Safety Data",
+    number: "SJ-2024-0041",
+    type: "scientific_journal", subtype: "safety_study", classification: "cardiovascular",
+    status: "approved", major_version: 1, minor_version: 0,
+    related_products: ["Drug X"], countries: ["United States", "Canada"],
+    language: "English", therapeutic_area_diseases: ["Cardiovascular Disease"],
+    category: "Safety", topic: "Cardiovascular Monitoring",
+    owner: "lisa.wong", created_by: "lisa.wong",
+    created_at: 1689638400000, expires_at: 1752710400000, off_label: false
+  },
+  {
+    document_id: 7, version_id: 107,
+    name: "DRUGX_Compliance_Study_2024",
+    title: "Patient Compliance and Adherence Studies",
+    number: "SJ-2024-0063",
+    type: "scientific_journal", subtype: "observational_study", classification: "real_world_evidence",
+    status: "expired", major_version: 1, minor_version: 0,
+    related_products: ["Drug X"], countries: ["United States"],
+    language: "English", therapeutic_area_diseases: ["Cardiovascular Disease"],
+    category: "Compliance", topic: "Patient Adherence",
+    owner: "lisa.wong", created_by: "lisa.wong",
+    created_at: 1672531200000, expires_at: 1704067200000, off_label: false
+  },
+  {
+    document_id: 8, version_id: 108,
+    name: "DRUGX_Contraindications_Comp",
+    title: "Contraindications Component",
+    number: "COMP-2024-0019",
+    type: "component", subtype: "safety_profile", classification: "contraindications",
+    status: "approved", major_version: 1, minor_version: 1,
+    related_products: ["Drug X"], countries: null,
+    language: "English", therapeutic_area_diseases: ["Cardiovascular Disease"],
+    category: "Safety", topic: "Contraindications",
+    owner: "sarah.johnson", created_by: "sarah.johnson",
+    created_at: 1683849600000, expires_at: 1746921600000, off_label: false
+  }
+];
+
+/* ============================================ */
+/* APP STATE                                    */
+/* ============================================ */
+let selectedDocs = new Set();
+let generationType = null; // 'srd' or 'component'
+let isGenerating = false;
+let generationTimer = null;
+let generatedDocMarkdown = '';
+let chatHistory = [];
+
+/* ============================================ */
+/* COLUMN 1 LOGIC                               */
+/* ============================================ */
+let searchTimeout = null;
+
+function handleSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(applyFilters, 300);
+}
+
+function applyFilters() {
+  const query = document.getElementById('docSearch').value.toLowerCase().trim();
+  const typeFilter = document.getElementById('filterType').value;
+  const statusFilter = document.getElementById('filterStatus').value;
+
+  const filtered = sampleDocuments.filter(doc => {
+    const matchText = !query ||
+      (doc.title || '').toLowerCase().includes(query) ||
+      (doc.number || '').toLowerCase().includes(query) ||
+      (doc.category || '').toLowerCase().includes(query) ||
+      (doc.topic || '').toLowerCase().includes(query);
+    const matchType = !typeFilter || doc.type === typeFilter;
+    const matchStatus = !statusFilter || doc.status === statusFilter;
+    return matchText && matchType && matchStatus;
+  });
+
+  renderDocList(filtered);
+}
+
+function renderDocList(docs) {
+  const container = document.getElementById('docList');
+  if (docs.length === 0) {
+    container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-disabled);font-size:13px;">No documents match your filters.</div>';
+    return;
+  }
+  container.innerHTML = docs.map(doc => {
+    const isSelected = selectedDocs.has(doc.document_id);
+    const date = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const statusClass = 'status-' + doc.status.replace(' ', '-');
+    const typeClass = 'type-' + doc.type;
+    const typeLabel = doc.type === 'scientific_journal' ? 'Journal' : doc.type === 'component' ? 'Component' : 'SRD';
+
+    // Source & access badge for imported docs
+    let sourceBadge = '';
+    if (doc._source) {
+      const dbIcon = doc._source === 'PubMed' ? '🔬' : '🧬';
+      const dbLabel = doc._source;
+      let accessBadge = '';
+      if (doc._free) {
+        accessBadge = `<span class="doc-access-badge doc-access-free">⊕ Free</span>`;
+      } else if (doc._purchased) {
+        accessBadge = `<span class="doc-access-badge doc-access-purchased">✅ Purchased</span>`;
+      } else {
+        accessBadge = `<span class="doc-access-badge doc-access-locked">🔒 Purchase needed</span>`;
+      }
+      sourceBadge = `<span class="doc-source-badge">${dbIcon} ${dbLabel}</span>${accessBadge}`;
+    }
+
+    return `
+      <div class="doc-row ${isSelected ? 'selected' : ''}" onclick="toggleDoc(${doc.document_id})" title="${doc.title}">
+        <input type="checkbox" class="doc-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleDoc(${doc.document_id})">
+        <div class="doc-info">
+          <div class="doc-title">${doc.title}</div>
+          <div class="doc-meta">
+            <span class="doc-number">${doc.number}</span>
+            <span class="doc-version">v${doc.major_version}.${doc.minor_version}</span>
+            <span class="type-badge ${typeClass}">${typeLabel}</span>
+            <span class="status-badge ${statusClass}">${doc.status.replace('-', ' ')}</span>
+            ${sourceBadge}
+          </div>
+          <div style="font-size:10px;color:var(--text-disabled);margin-top:3px;">${date} · ${doc.owner}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleDoc(id) {
+  if (selectedDocs.has(id)) {
+    selectedDocs.delete(id);
+  } else {
+    selectedDocs.add(id);
+  }
+  updateSelectionUI();
+  applyFilters();
+}
+
+function clearAllSelections() {
+  selectedDocs.clear();
+  updateSelectionUI();
+  applyFilters();
+}
+
+function updateSelectionUI() {
+  const count = selectedDocs.size;
+  document.getElementById('docCount').textContent = count + ' selected';
+  updateSourceSummary();
+  validateForm();
+}
+
+/* ============================================ */
+/* COLUMN 2 LOGIC                               */
+/* ============================================ */
+function selectType(type) {
+  generationType = type;
+  ['srd','component','faq','msl'].forEach(t => {
+    const card = document.getElementById('card' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (card) card.classList.toggle('active', type === t);
+  });
+  const form = document.getElementById('configForm');
+  const actions = document.getElementById('actionButtons');
+  if (type === 'faq' || type === 'msl') {
+    if (type === 'faq' || type === 'msl') {
+      renderConfigForm();
+      form.style.display = 'flex';
+    }
+    actions.style.display = 'flex';
+  } else {
+    renderConfigForm();
+    form.style.display = 'flex';
+    actions.style.display = 'flex';
+  }
+  updateSourceSummary();
+  validateForm();
+}
+
+function renderConfigForm() {
+  const form = document.getElementById('configForm');
+  const productsField = `
+    <div class="form-group">
+      <label>Product</label>
+      <select class="form-select" id="product">
+        <option value="drug_x">Drug X</option>
+        <option value="drug_y">Drug Y</option>
+        <option value="drug_z">Drug Z</option>
+        <option value="vaccine_a">Vaccine A</option>
+        <option value="vaccine_b">Vaccine B</option>
+      </select>
+    </div>`;
+
+  if (generationType === 'srd') {
+    form.innerHTML = `
+      <div class="form-group">
+        <label>Document Title</label>
+        <input class="form-input" id="docTitle" placeholder="What should this SRD address?" oninput="validateForm()">
+      </div>
+      <div class="form-group">
+        <label>Study Type</label>
+        <select class="form-select" id="studyType">
+          <option value="clinical_trial">Clinical Trial</option>
+          <option value="observational">Observational Study</option>
+          <option value="meta_analysis">Meta-Analysis</option>
+          <option value="case_report">Case Report</option>
+        </select>
+      </div>
+      ${productsField}
+      <div class="form-group">
+        <label>Language</label>
+        <select class="form-select" id="docLang">
+          <option value="English">English</option>
+          <option value="German">German</option>
+          <option value="French">French</option>
+          <option value="Spanish">Spanish</option>
+        </select>
+      </div>
+      <div class="validation-msg info">ℹ️ Expected sources: Scientific Journals (minimum 1)</div>
+    `;
+  } else if (generationType === 'component') {
+    form.innerHTML = `
+      <div class="form-group">
+        <label>Component Name</label>
+        <input class="form-input" id="docTitle" placeholder="Enter component name" oninput="validateForm()">
+      </div>
+      <div class="form-group">
+        <label>Component Subtype</label>
+        <select class="form-select" id="compSubtype">
+          <option value="dosing">Dosing Information</option>
+          <option value="safety">Safety Profile</option>
+          <option value="efficacy">Efficacy Summary</option>
+          <option value="moa">Mechanism of Action</option>
+          <option value="patient_info">Patient Information</option>
+        </select>
+      </div>
+      ${productsField}
+      <div class="form-group">
+        <label>Language</label>
+        <select class="form-select" id="docLang">
+          <option value="English">English</option>
+          <option value="German">German</option>
+          <option value="French">French</option>
+          <option value="Spanish">Spanish</option>
+        </select>
+      </div>
+      <div class="validation-msg info">ℹ️ Expected sources: Components and/or Scientific Journals. Drag to reorder.</div>
+    `;
+  } else if (generationType === 'faq') {
+    form.innerHTML = `
+      <div class="form-group">
+        <label>FAQ Title</label>
+        <input class="form-input" id="docTitle" placeholder="Enter FAQ title" oninput="validateForm()">
+      </div>
+      ${productsField}
+      <div class="form-group">
+        <label>Language</label>
+        <select class="form-select" id="docLang">
+          <option value="English">English</option>
+          <option value="German">German</option>
+          <option value="French">French</option>
+          <option value="Spanish">Spanish</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mandatory Questions</label>
+        <label class="mandatory-q-btn">
+          <input type="file" style="display:none;">
+          📎 Upload Questions File
+        </label>
+      </div>
+    `;
+  } else if (generationType === 'msl') {
+    form.innerHTML = `
+      <div class="form-group">
+        <label>Deck Title</label>
+        <input class="form-input" id="docTitle" placeholder="Enter MSL deck title" oninput="validateForm()">
+      </div>
+      <div class="form-group">
+        <label>Sections</label>
+        <div class="multiselect-wrap" id="sectionsWrap">
+          <div class="multiselect-trigger" onclick="toggleMultiselect()">
+            <span id="sectionsLabel">Select sections…</span>
+            <span class="multiselect-caret">▾</span>
+          </div>
+          <div class="multiselect-dropdown" id="sectionsDropdown">
+            ${['Executive Summary','Disease Overview','Mechanism of Action','Clinical Efficacy','Safety Profile','Dosing & Administration','Comparative Data','Real-World Evidence','Patient Case Studies','Key References'].map(s => `
+            <label class="multiselect-option">
+              <input type="checkbox" value="${s}" onchange="updateSectionsLabel()"> ${s}
+            </label>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Number of Slides</label>
+        <input class="form-input" id="slideCount" type="number" min="1" max="100" placeholder="e.g. 20" style="width:100%;">
+      </div>
+      <div class="form-group">
+        <label>Therapeutic Area</label>
+        <select class="form-select" id="therapArea">
+          <option value="cardiovascular">Cardiovascular Disease</option>
+          <option value="oncology">Oncology</option>
+          <option value="immunology">Immunology</option>
+          <option value="neurology">Neurology</option>
+          <option value="infectious_disease">Infectious Disease</option>
+          <option value="respiratory">Respiratory</option>
+          <option value="endocrinology">Endocrinology</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Language</label>
+        <select class="form-select" id="docLang">
+          <option value="English">English</option>
+          <option value="German">German</option>
+          <option value="French">French</option>
+          <option value="Spanish">Spanish</option>
+        </select>
+      </div>
+    `;
+  }
+}
+
+function toggleMultiselect() {
+  const dd = document.getElementById('sectionsDropdown');
+  if (dd) dd.classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('sectionsWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const dd = document.getElementById('sectionsDropdown');
+    if (dd) dd.classList.remove('open');
+  }
+});
+function updateSectionsLabel() {
+  const checked = [...document.querySelectorAll('#sectionsDropdown input:checked')].map(el => el.value);
+  const label = document.getElementById('sectionsLabel');
+  if (label) label.textContent = checked.length ? checked.join(', ') : 'Select sections…';
+}
+
+function updateSourceSummary() {
+  const summary = document.getElementById('sourceSummary');
+  const list = document.getElementById('sourceList');
+  const countEl = document.getElementById('sourceCount');
+
+  if (selectedDocs.size === 0) {
+    summary.style.display = 'none';
+    return;
+  }
+
+  summary.style.display = 'block';
+  countEl.textContent = selectedDocs.size;
+
+  const docs = sampleDocuments.filter(d => selectedDocs.has(d.document_id));
+  const showDrag = generationType === 'component';
+
+  list.innerHTML = docs.map(doc => {
+    const typeLabel = doc.type === 'scientific_journal' ? '📄' : doc.type === 'component' ? '🧩' : '📑';
+    const statusWarning = (doc.status === 'expired' || doc.status === 'in-review') ? ' ⚠️' : '';
+    return `
+      <div class="source-item" data-id="${doc.document_id}">
+        ${showDrag ? '<span class="drag-handle">⠿</span>' : ''}
+        <span>${typeLabel}</span>
+        <span class="source-title" title="${doc.title}">${doc.title}${statusWarning}</span>
+        <button class="remove-source" onclick="event.stopPropagation(); removeSource(${doc.document_id})" title="Remove">✕</button>
+      </div>
+    `;
+  }).join('');
+
+  // Init drag-and-drop for component type
+  if (showDrag && typeof Sortable !== 'undefined') {
+    Sortable.create(list, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost' });
+  }
+}
+
+function removeSource(id) {
+  selectedDocs.delete(id);
+  updateSelectionUI();
+  applyFilters();
+}
+
+function validateForm() {
+  const btn = document.getElementById('generateBtn');
+  if (!btn) return;
+  const area = document.getElementById('validationArea');
+  const titleEl = document.getElementById('docTitle');
+  const title = titleEl ? titleEl.value.trim() : '';
+  let valid = true;
+  let warnings = [];
+
+  if (!generationType) { valid = false; }
+
+  // Title required for all types that have it
+  if (generationType && generationType !== 'msl' && !title) { valid = false; }
+  if (generationType === 'msl') {
+    const mslTitle = document.getElementById('docTitle');
+    if (!mslTitle || !mslTitle.value.trim()) { valid = false; }
+  }
+
+  // Sources only required for srd and component
+  if (generationType === 'srd' || generationType === 'component') {
+    if (selectedDocs.size === 0) { valid = false; warnings.push('Select at least one source document.'); }
+  }
+
+  if (generationType === 'srd') {
+    const docs = sampleDocuments.filter(d => selectedDocs.has(d.document_id));
+    const hasJournal = docs.some(d => d.type === 'scientific_journal');
+    if (selectedDocs.size > 0 && !hasJournal) {
+      warnings.push('SRD generation requires at least one Scientific Journal.');
+      valid = false;
+    }
+    const hasExpired = docs.some(d => d.status === 'expired' || d.status === 'in-review');
+    if (hasExpired) {
+      warnings.push('Some selected documents are not approved. Proceed with caution.');
+    }
+  }
+
+  if (area) area.innerHTML = warnings.map(w => `<div class="validation-msg warning">⚠️ ${w}</div>`).join('');
+  btn.disabled = !valid;
+}
+
+function resetConfig() {
+  generationType = null;
+  document.getElementById('cardSrd').classList.remove('active');
+  document.getElementById('cardComponent').classList.remove('active');
+  document.getElementById('configForm').style.display = 'none';
+  document.getElementById('actionButtons').style.display = 'none';
+  document.getElementById('sourceSummary').style.display = 'none';
+  document.getElementById('validationArea').innerHTML = '';
+}
+
+/* ============================================ */
+/* GENERATION SIMULATION                        */
+/* ============================================ */
+const genPhases = [
+  { pct: 10, label: 'Analyzing source documents...' },
+  { pct: 25, label: 'Extracting key findings...' },
+  { pct: 40, label: 'Identifying themes and structure...' },
+  { pct: 55, label: 'Generating content sections...' },
+  { pct: 70, label: 'Synthesizing conclusions...' },
+  { pct: 85, label: 'Formatting document layout...' },
+  { pct: 95, label: 'Finalizing document...' },
+  { pct: 100, label: 'Complete!' }
+];
+
+function startGeneration() {
+  if (isGenerating) return;
+  isGenerating = true;
+  document.getElementById('progressOverlay').style.display = 'flex';
+
+  const titleEl = document.getElementById('docTitle');
+  const title = titleEl ? titleEl.value.trim() : 'Generated Document';
+
+  let phase = 0;
+  generationTimer = setInterval(() => {
+    if (phase >= genPhases.length) {
+      clearInterval(generationTimer);
+      finishGeneration(title);
+      return;
+    }
+    const p = genPhases[phase];
+    document.getElementById('progressFill').style.width = p.pct + '%';
+    document.getElementById('progressPhase').textContent = p.label;
+    document.getElementById('progressPct').textContent = p.pct + '%';
+
+    // Also stream to chat
+    addChatMessage('assistant', `⏳ ${p.label} (${p.pct}%)`, true);
+    phase++;
+  }, 700);
+}
+
+function cancelGeneration() {
+  clearInterval(generationTimer);
+  isGenerating = false;
+  document.getElementById('progressOverlay').style.display = 'none';
+  document.getElementById('progressFill').style.width = '0%';
+  addChatMessage('assistant', '❌ Generation cancelled.');
+}
+
+function finishGeneration(title) {
+  isGenerating = false;
+  document.getElementById('progressOverlay').style.display = 'none';
+
+  const selectedDocsList = sampleDocuments.filter(d => selectedDocs.has(d.document_id));
+  const refs = selectedDocsList.map((d, i) => `[${i+1}] ${d.title} (${d.number})`).join('\n');
+
+  generatedDocMarkdown = `# ${title}
+
+## Executive Summary
+
+Drug X has demonstrated significant efficacy in phase III clinical trials for cardiovascular patients [1][2]. This scientific response document synthesizes findings from ${selectedDocsList.length} peer-reviewed ${selectedDocsList.length === 1 ? 'study' : 'studies'} evaluating the cardiovascular benefits and safety profile of Drug X.
+
+## Introduction
+
+This document provides a comprehensive analysis of Drug X's role in cardiovascular disease management, drawing upon the latest clinical evidence. Drug X, a novel therapeutic agent, has shown promising results across multiple clinical trial phases and post-marketing surveillance studies.
+
+## Efficacy Data
+
+### Primary Endpoints
+
+The pivotal Phase III trial demonstrated the following key outcomes:
+
+| Endpoint | Drug X | Placebo | p-value |
+|----------|--------|---------|---------|
+| Reduction in cardiac events | 34% | 12% | < 0.001 |
+| Improvement in ejection fraction | +12% | +2% | < 0.001 |
+| All-cause mortality reduction | 18% | 6% | 0.003 |
+| Hospitalization rate | 22% lower | baseline | < 0.01 |
+
+### Secondary Endpoints
+
+Secondary analyses revealed additional benefits including improved quality of life scores (SF-36 improvement: 15.2 points vs 4.1 points, p < 0.001) and reduced time to first cardiovascular event [1].
+
+## Safety Profile
+
+### Overview
+
+Drug X demonstrated a favorable safety profile consistent with its mechanism of action. The most commonly reported adverse events were mild to moderate in severity [2].
+
+### Adverse Events Summary
+
+| Adverse Event | Drug X (%) | Placebo (%) |
+|--------------|-----------|------------|
+| Headache | 8.2 | 6.1 |
+| Dizziness | 5.4 | 3.2 |
+| Nausea | 3.1 | 2.8 |
+| Peripheral edema | 2.9 | 1.5 |
+
+### Cardiovascular Safety
+
+No significant increase in major adverse cardiovascular events (MACE) was observed. The drug showed a neutral effect on QTc interval prolongation [3].
+
+## Dosing Recommendations
+
+The recommended starting dose is 5 mg once daily, titrated to a maximum of 20 mg daily based on clinical response and tolerability. Dose adjustments are recommended for patients with renal impairment (eGFR < 30 mL/min).
+
+## Conclusion
+
+Based on the available evidence, Drug X represents a meaningful therapeutic advance in cardiovascular disease management. The compound demonstrates robust efficacy in reducing cardiac events while maintaining an acceptable safety profile suitable for long-term use.
+
+## References
+
+${refs}
+`;
+
+  // Render preview
+  renderPreview();
+
+  // Add success message to chat
+  addChatMessage('assistant', `✅ **Your document "${title}" is ready!**\n\nI've generated a comprehensive ${generationType === 'srd' ? 'SRD' : 'Component'} document based on ${selectedDocsList.length} source ${selectedDocsList.length === 1 ? 'document' : 'documents'}. You can:\n\n• Switch to the **Preview** tab to see the formatted document\n• Ask me to revise, expand, or refine any section\n• Download the document as DOCX\n\nTry asking: *"Expand the safety section"* or *"Add a table comparing trial results"*`);
+
+  // Add sources
+  addChatMessage('source', `**Sources Used:**\n${refs}`);
+}
+
+function renderPreview() {
+  const content = document.getElementById('previewContent');
+  if (typeof marked !== 'undefined') {
+    content.innerHTML = marked.parse(generatedDocMarkdown);
+  } else {
+    content.innerHTML = '<pre style="white-space:pre-wrap;">' + generatedDocMarkdown + '</pre>';
+  }
+}
+
+/* ============================================ */
+/* COLUMN 3: CHAT LOGIC                         */
+/* ============================================ */
+function addChatMessage(role, text, isProgress) {
+  const container = document.getElementById('chatMessages');
+
+  // If progress message, update last progress or add new
+  if (isProgress) {
+    const last = container.querySelector('.msg-progress');
+    if (last) {
+      last.querySelector('.msg-text').innerHTML = formatMessageText(text);
+      container.scrollTop = container.scrollHeight;
+      return;
+    }
+  }
+
+  const div = document.createElement('div');
+
+  if (role === 'user') {
+    div.className = 'message message-user';
+    div.innerHTML = formatMessageText(text);
+  } else if (role === 'source') {
+    div.className = 'message-source';
+    div.innerHTML = formatMessageText(text);
+  } else {
+    div.className = `message message-assistant ${isProgress ? 'msg-progress' : ''}`;
+    div.innerHTML = `<div class="msg-label">🤖 Aimie</div><div class="msg-text">${formatMessageText(text)}</div>`;
+  }
+
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function formatMessageText(text) {
+  // Simple markdown-like formatting
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>')
+    .replace(/\[(\d+)\]/g, '<span style="background:var(--secondary-100);padding:0 4px;border-radius:3px;font-size:11px;font-weight:600;color:var(--secondary-700);cursor:pointer;" title="Source reference">[$1]</span>');
+}
+
+function showTyping() {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'typing-indicator';
+  div.id = 'typingIndicator';
+  div.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  addChatMessage('user', text);
+  input.value = '';
+
+  showTyping();
+
+  // Mock AI response with delay
+  setTimeout(() => {
+    hideTyping();
+    const response = getMockResponse(text);
+    typewriterEffect(response.text, () => {
+      if (response.updatedDoc) {
+        generatedDocMarkdown = response.updatedDoc;
+        renderPreview();
+      }
+    });
+  }, 1200 + Math.random() * 800);
+}
+
+function typewriterEffect(text, callback) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'message message-assistant';
+  div.innerHTML = `<div class="msg-label">🤖 Aimie</div><div class="msg-text"></div>`;
+  container.appendChild(div);
+
+  const textEl = div.querySelector('.msg-text');
+  const words = text.split(' ');
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i >= words.length) {
+      clearInterval(interval);
+      textEl.innerHTML = formatMessageText(text);
+      container.scrollTop = container.scrollHeight;
+      if (callback) callback();
+      return;
+    }
+    textEl.innerHTML = formatMessageText(words.slice(0, i + 1).join(' '));
+    container.scrollTop = container.scrollHeight;
+    i++;
+  }, 40);
+}
+
+/* ============================================ */
+/* MOCK AI RESPONSES                            */
+/* ============================================ */
+function getMockResponse(input) {
+  const lower = input.toLowerCase();
+
+  if (lower.includes('expand') && lower.includes('safety')) {
+    return {
+      text: "I've expanded the Safety Profile section with additional detail from the source documents. The section now includes a more comprehensive adverse events summary, detailed cardiovascular safety data, and a new subsection on long-term safety monitoring recommendations [2][3].\n\nKey additions:\n• Extended adverse events table with severity grading\n• Cardiovascular safety sub-analysis results\n• Post-marketing surveillance findings\n• Risk management recommendations\n\nSwitch to the **Preview** tab to see the updated document.",
+      updatedDoc: generatedDocMarkdown.replace(
+        '### Cardiovascular Safety\n\nNo significant increase in major adverse cardiovascular events (MACE) was observed. The drug showed a neutral effect on QTc interval prolongation [3].',
+        '### Cardiovascular Safety\n\nNo significant increase in major adverse cardiovascular events (MACE) was observed. The drug showed a neutral effect on QTc interval prolongation [3].\n\n### Long-term Safety Monitoring\n\nLong-term follow-up data (median 24 months) demonstrated sustained safety with no emerging signals of concern. Hepatic function remained stable throughout treatment, with ALT elevations > 3x ULN occurring in only 0.8% of patients vs 0.5% in the placebo arm.\n\n### Post-Marketing Surveillance\n\nPost-marketing data from over 50,000 treated patients confirms the favorable safety profile observed in clinical trials. Rare cases of hypersensitivity reactions (< 0.01%) were reported and resolved upon discontinuation [2].'
+      )
+    };
+  }
+
+  if (lower.includes('concise') || lower.includes('shorter') || lower.includes('brief')) {
+    return {
+      text: "I've made the document more concise by:\n• Tightening the Executive Summary to focus on key outcomes\n• Removing redundant phrases in the Introduction\n• Consolidating the Efficacy section\n\nThe document is now approximately 20% shorter while retaining all critical data points. Check the **Preview** tab for the updated version.",
+      updatedDoc: generatedDocMarkdown
+    };
+  }
+
+  if (lower.includes('table') || lower.includes('comparison')) {
+    return {
+      text: "I've added a comparison table to the Efficacy Data section showing head-to-head results across the primary and secondary endpoints. The table includes:\n\n| Metric | Result |\n|--------|--------|\n| Primary endpoint | 34% reduction (p < 0.001) |\n| Secondary endpoint | 15.2 point improvement |\n| Safety profile | Favorable vs placebo |\n\nView the full formatted table in the **Preview** tab.",
+      updatedDoc: generatedDocMarkdown
+    };
+  }
+
+  if (lower.includes('conclusion') || lower.includes('rewrite')) {
+    return {
+      text: "I've rewritten the Conclusion section to be more impactful. The new version emphasizes the clinical significance of the findings and includes a stronger recommendation statement based on the strength of evidence [1][2][3].\n\nThe updated conclusion now addresses:\n• Statistical significance of primary outcomes\n• Clinical relevance for practicing physicians\n• Positioning within current treatment guidelines\n\nCheck the **Preview** tab for the revised text.",
+      updatedDoc: generatedDocMarkdown
+    };
+  }
+
+  if (lower.includes('dosing') || lower.includes('dose')) {
+    return {
+      text: "I've enhanced the Dosing Recommendations section with additional guidance including:\n\n• Titration schedule: Start 5mg → 10mg at week 2 → 20mg at week 4\n• Renal dose adjustment table\n• Hepatic impairment considerations\n• Drug interaction-based modifications\n• Elderly patient considerations (≥75 years)\n\nThe information is drawn from the dosing guidelines component [COMP-2024-0042]. See the **Preview** tab.",
+      updatedDoc: generatedDocMarkdown
+    };
+  }
+
+  if (lower.includes('section') && lower.includes('add')) {
+    return {
+      text: "I can add new sections to the document. What section would you like me to add? Here are some suggestions:\n\n• **Drug Interactions** — Known interactions and management\n• **Special Populations** — Elderly, pediatric, pregnancy\n• **Patient Counseling** — Key points for HCPs\n• **Comparative Effectiveness** — vs. standard of care\n\nJust tell me which one, or describe a custom section you'd like.",
+      updatedDoc: null
+    };
+  }
+
+  if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
+    return {
+      text: "Hello! I'm Aimie, your AI Medical Information assistant. I'm here to help you refine the generated document. You can ask me to:\n\n• **Expand** or **condense** specific sections\n• **Add tables** or restructure data\n• **Rewrite** sections for clarity\n• **Add new sections** on specific topics\n\nWhat would you like to work on?",
+      updatedDoc: null
+    };
+  }
+
+  // Default response
+  return {
+    text: `I understand you'd like me to "${input}". I've made the requested changes to the document. The modifications maintain consistency with the existing content and source references [1][2].\n\nPlease switch to the **Preview** tab to review the updates. Let me know if you'd like any further adjustments!`,
+    updatedDoc: generatedDocMarkdown
+  };
+}
+
+/* ============================================ */
+/* TAB SWITCHING                                */
+/* ============================================ */
+function switchTab(tab) {
+  document.getElementById('tabChat').classList.toggle('active', tab === 'chat');
+  document.getElementById('tabPreview').classList.toggle('active', tab === 'preview');
+  document.getElementById('chatPanel').style.display = tab === 'chat' ? 'flex' : 'none';
+  document.getElementById('previewPanel').style.display = tab === 'preview' ? 'flex' : 'none';
+}
+
+function toggleCol(n) {
+  const col = document.getElementById('col' + n);
+  const btn = col.querySelector('.col-collapse-btn');
+  const isCollapsed = col.classList.toggle('collapsed');
+  btn.title = isCollapsed ? 'Expand' : 'Collapse';
+}
+
+function expandColIfCollapsed(n) {
+  const col = document.getElementById('col' + n);
+  if (col.classList.contains('collapsed')) toggleCol(n);
+}
+
+/* ============================================ */
+/* INITIALIZATION                               */
+/* ============================================ */
+function init() {
+  // Default filter: approved
+  document.getElementById('filterStatus').value = 'approved';
+  applyFilters();
+
+  // Welcome chat message
+  addChatMessage('assistant', "👋 **Hi! I'm Aimie**, your AI Medical Information assistant.\n\nTo get started:\n1. **Select source documents** from the left panel\n2. **Choose a document type** (SRD or Component) in the middle panel\n3. **Configure settings** and click **Generate Document**\n\nOnce generated, I can help you refine, expand, or restructure any section. Try selecting 3-5 scientific journals for an SRD!");
+}
+
+init();
+
+/* ============================================ */
+/* ADD DOCUMENT DIALOG                          */
+/* ============================================ */
+let currentDb = 'pubmed';
+let addDocSelectedResults = [];
+
+const mockDbResults = {
+  pubmed: [
+    {
+      id: 'pm1', db: 'PubMed', free: true,
+      pmid: '36473651',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/36473651/',
+      title: 'Efficacy and safety of COVID-19 vaccines.',
+      authors: 'Graña C, Ghosn L, Evrenoglou T, Jarde A, Minozzi S, Bergman H, Buckley BS, Probyn K, Villanueva G, Henschke N, et al.',
+      journal: 'Cochrane Database Syst Rev.',
+      citation: '2022 Dec 7;12(12):CD015477.',
+      doi: '10.1002/14651858.CD015477',
+      abstract: 'OBJECTIVES: To assess the efficacy and safety of COVID-19 vaccines (as a full primary vaccination series or a booster dose) against SARS-CoV-2. Implications for research: Future research should evaluate the long-term effect of vaccines, compare different …'
+    },
+    {
+      id: 'pm2', db: 'PubMed', free: true,
+      pmid: '35504917',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/35504917/',
+      title: 'COVID-19 vaccine development: milestones, lessons and prospects.',
+      authors: 'Li M, Wang H, Tian L, Pang Z, Yang Q, Huang T, Fan J, Song L, Tong Y, Fan H.',
+      journal: 'Signal Transduct Target Ther.',
+      citation: '2022 May 3;7(1):146.',
+      doi: '10.1038/s41392-022-00996-y',
+      abstract: 'Viral vector vaccines, protein subunit vaccines, and mRNA vaccines may induce additional cellular or humoral immune regulations, including Th cell responses and germinal center responses, and form relevant memory cells, greatly improving their efficien …'
+    },
+    {
+      id: 'pm3', db: 'PubMed', free: true,
+      pmid: '36961579',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/36961579/',
+      title: 'Safety of COVID-19 vaccines in pregnancy: a VAERS based analysis.',
+      authors: 'Santi Laurini G, Montanaro N, Motola D.',
+      journal: 'Eur J Clin Pharmacol.',
+      citation: '2023 May;79(5):657-661.',
+      doi: '10.1007/s00228-023-03482-8',
+      abstract: 'PURPOSE: Since vaccination against COVID-19 is recommended in pregnant people, we aimed to provide further evidence on the safety profile of COVID-19 vaccines in pregnancy. METHODS: Data on COVID-19 vaccines adverse events following immunizations (AEFI) …'
+    },
+    {
+      id: 'pm4', db: 'PubMed', free: false, purchased: true,
+      pmid: '35045574',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/35045574/',
+      title: 'Safety-Related Outcomes of Novel mRNA COVID-19 Vaccines in Pregnancy.',
+      authors: 'Nakahara A, Biggio JR, Elmayan A, Williams FB.',
+      journal: 'Am J Perinatol.',
+      citation: '2022 Oct;39(13):1484-1488.',
+      doi: '10.1055/a-1745-1168',
+      abstract: 'OBJECTIVE: The objective of this study was to describe the safety profile and demographic data for a cohort of pregnant individuals who received an mRNA coronavirus disease 2019 (COVID-19) vaccine. STUDY DESIGN: Prospective cohort study (with exposure matching) …'
+    },
+    {
+      id: 'pm5', db: 'PubMed', free: false,
+      pmid: '35964614',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/35964614/',
+      title: 'Safety of COVID-19 vaccines in pregnancy: a Canadian National Vaccine Safety (CANVAS) network cohort study.',
+      authors: 'Sadarangani M, Soe P, Shulha HP, Valiquette L, Vanderkooi OG, Kellner JD, Muller MP, Top KA, Isenor JE, McGeer A, et al.',
+      journal: 'Lancet Infect Dis.',
+      citation: '2022 Nov;22(11):1553-1564.',
+      doi: '10.1016/S1473-3099(22)00426-1',
+      abstract: 'We employed multivariable logistic regression to examine significant health events associated with mRNA vaccines, adjusting for age group, previous SARS-CoV-2 infection, and trimester, as appropriate. INTERPRETATION: COVID-19 mRNA vaccines have a go …'
+    },
+  ],
+  embase: [
+    {
+      id: 'em1', db: 'Embase', free: true,
+      pmid: 'EM-2024-1102345',
+      url: 'https://www.embase.com/',
+      title: 'Drug X Efficacy in European Cohort Study.',
+      authors: 'Müller H, Schneider K, Bauer W.',
+      journal: 'Eur Heart J.',
+      citation: '2024;45(3):210-220.',
+      doi: '10.1093/eurheartj/ehad102',
+      abstract: 'BACKGROUND: This large European cohort study assessed the long-term efficacy outcomes of Drug X across diverse patient populations in five EU member states over a 36-month follow-up period …'
+    },
+    {
+      id: 'em2', db: 'Embase', free: false,
+      pmid: 'EM-2023-8854321',
+      url: 'https://www.embase.com/',
+      title: 'Post-marketing Surveillance of Drug X: EU Registry Data.',
+      authors: 'Dupont C, Leblanc F, Martin S.',
+      journal: 'Drug Safety.',
+      citation: '2023;46(8):745-758.',
+      doi: '10.1007/s40264-023-01289-4',
+      abstract: 'OBJECTIVE: To evaluate real-world safety outcomes from the EU Drug X registry comprising 28,000 patients across 14 countries over a 24-month surveillance period following market authorization …'
+    },
+    {
+      id: 'em3', db: 'Embase', free: false,
+      pmid: 'EM-2024-3301872',
+      url: 'https://www.embase.com/',
+      title: 'Adverse Event Profiles of Drug X in Real-World Practice.',
+      authors: 'Rossi L, Ferrari M, Conti G.',
+      journal: 'Pharmacoepidemiol Drug Saf.',
+      citation: '2024;33(2):e5701.',
+      doi: '10.1002/pds.5701',
+      abstract: 'PURPOSE: Real-world pharmacovigilance analysis of Drug X adverse event reports submitted to EudraVigilance between 2021 and 2023, stratified by age, sex, and comorbidity burden …'
+    },
+  ]
+};
+
+function openAddDocDialog() {
+  document.getElementById('addDocOverlay').classList.add('open');
+  addDocSelectedResults = [];
+  updateAddConfirmBtn();
+  setTimeout(() => document.getElementById('addDocSearchInput').focus(), 150);
+}
+
+function closeAddDocDialog(e) {
+  if (e && e.target !== document.getElementById('addDocOverlay')) return;
+  document.getElementById('addDocOverlay').classList.remove('open');
+  document.getElementById('addDocResults').style.display = 'none';
+  document.getElementById('addDocResults').innerHTML = '';
+  document.getElementById('addDocSearchInput').value = '';
+  addDocSelectedResults = [];
+  document.getElementById('dbMenu').classList.remove('open');
+}
+
+function toggleDbDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('dbMenu').classList.toggle('open');
+}
+document.addEventListener('click', () => {
+  document.getElementById('dbMenu') && document.getElementById('dbMenu').classList.remove('open');
+});
+
+function selectDb(db) {
+  currentDb = db;
+  const labels = { pubmed: { label: 'PubMed', icon: '🔬' }, embase: { label: 'Embase', icon: '🧬' } };
+  document.getElementById('dbLabel').textContent = labels[db].label;
+  document.getElementById('dbIcon').textContent = labels[db].icon;
+  // Update checkmarks & active state
+  ['pubmed','embase'].forEach(d => {
+    document.getElementById('opt' + d.charAt(0).toUpperCase() + d.slice(1)).classList.toggle('active', d === db);
+    document.getElementById('check' + d.charAt(0).toUpperCase() + d.slice(1)).style.display = d === db ? '' : 'none';
+  });
+  document.getElementById('dbMenu').classList.remove('open');
+  // Re-run search if there's a query
+  if (document.getElementById('addDocSearchInput').value.trim()) runDbSearch();
+}
+
+function runDbSearch() {
+  const q = document.getElementById('addDocSearchInput').value.trim();
+  const resultsEl = document.getElementById('addDocResults');
+  if (!q) { resultsEl.style.display = 'none'; return; }
+
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = `<div style="padding:14px 16px;font-size:12px;color:var(--text-medium);">🔄 Searching ${currentDb === 'pubmed' ? 'PubMed' : 'Embase'}…</div>`;
+
+  setTimeout(() => {
+    const results = mockDbResults[currentDb];
+    if (!results.length) {
+      resultsEl.innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--text-medium);">No results found.</div>';
+      return;
+    }
+    resultsEl.innerHTML = results.map((r, idx) => {
+      const isSelected = addDocSelectedResults.includes(r.id);
+      const locked = !r.free;
+      const selectable = r.free || r.purchased;
+      return `
+      <div class="adddoc-result-item ${isSelected ? 'selected' : ''} ${locked && !r.purchased ? 'locked' : ''}"
+           data-id="${r.id}"
+           onclick="${selectable ? "toggleResultSelect('" + r.id + "', this)" : "showLockedTooltip(event,'" + r.id + "')"}">
+
+        <!-- Left: index + checkbox -->
+        <div class="adddoc-result-left">
+          <div class="adddoc-result-index">${idx + 1}</div>
+          ${selectable
+            ? `<input type="checkbox" class="adddoc-result-cb" ${isSelected ? 'checked' : ''}
+                 onclick="event.stopPropagation();toggleResultSelect('${r.id}', this.closest('.adddoc-result-item'))">`
+            : `<div class="adddoc-result-lock" title="Purchase required">🔒</div>`
+          }
+        </div>
+
+        <!-- Main content -->
+        <div class="adddoc-result-info">
+          <div class="adddoc-result-title ${locked ? 'locked-title' : ''}">${r.title}</div>
+          <div class="adddoc-result-authors">${r.authors}</div>
+          <div class="adddoc-result-journal">
+            <span class="adddoc-journal-name">${r.journal}</span>
+            <span class="adddoc-citation-text">${r.citation} doi: ${r.doi}</span>
+          </div>
+          <div class="adddoc-result-badges">
+            <span class="adddoc-pmid-badge">PMID: ${r.pmid}</span>
+            ${r.free
+              ? `<span class="adddoc-free-badge">⊕ Free PMC article</span>`
+              : `<span class="adddoc-locked-badge">${r.purchased ? '✅ Purchased' : '🔒 Purchase required'}</span>`
+            }
+          </div>
+
+        </div>
+
+        <!-- Right: action button -->
+        <div class="adddoc-result-actions">
+          <button
+            class="adddoc-view-btn ${locked ? 'adddoc-view-btn-locked' : ''}"
+            onclick="event.stopPropagation(); window.open('${r.url}', '_blank', 'noopener,noreferrer')"
+            title="${locked ? (r.purchased ? 'View full text' : 'View abstract on PubMed (purchase for full text)') : 'View free full text on PubMed'}">
+            ${locked ? (r.purchased ? '📄 View Article' : '🔒 View Abstract') : '📄 View Article'}
+          </button>
+          ${locked && !r.purchased ? `<button
+            class="adddoc-buy-btn"
+            onclick="event.stopPropagation(); window.open('https://rightfind.copyright.com/rs-ui-web/welcome', '_blank', 'noopener,noreferrer')"
+            title="Purchase full text via RightFind">
+            🛒 Buy Article
+          </button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }, 2000);
+}
+
+function showLockedTooltip(e, id) {
+  // Briefly flash a tooltip
+  const el = e.currentTarget;
+  if (el.querySelector('.locked-tooltip')) return;
+  const tip = document.createElement('div');
+  tip.className = 'locked-tooltip';
+  tip.textContent = 'Full text requires purchase. You can still view the abstract on PubMed.';
+  el.style.position = 'relative';
+  el.appendChild(tip);
+  setTimeout(() => tip.remove(), 2800);
+}
+
+function toggleResultSelect(id, el) {
+  const idx = addDocSelectedResults.indexOf(id);
+  if (idx === -1) {
+    addDocSelectedResults.push(id);
+    el.classList.add('selected');
+    el.querySelector('.adddoc-result-cb').checked = true;
+  } else {
+    addDocSelectedResults.splice(idx, 1);
+    el.classList.remove('selected');
+    el.querySelector('.adddoc-result-cb').checked = false;
+  }
+  updateAddConfirmBtn();
+}
+
+function updateAddConfirmBtn() {
+  const btn = document.getElementById('addDocConfirmBtn');
+  const n = addDocSelectedResults.length;
+  btn.disabled = n === 0;
+  btn.textContent = n ? `Add ${n} Document${n > 1 ? 's' : ''}` : 'Add Selected';
+}
+
+function confirmAddDocs() {
+  document.getElementById('addDocOverlay').classList.remove('open');
+  const all = [...mockDbResults.pubmed, ...mockDbResults.embase];
+  const selected = all.filter(r => addDocSelectedResults.includes(r.id) && (r.free || r.purchased));
+  const locked = all.filter(r => addDocSelectedResults.includes(r.id) && !r.free && !r.purchased);
+  selected.forEach(r => {
+    const newDoc = {
+      document_id: Date.now() + Math.random() * 1000,
+      version_id: Date.now(),
+      name: r.title.substring(0, 40).replace(/\s+/g, '_'),
+      title: r.title,
+      number: 'PMID: ' + r.pmid,
+      type: 'scientific_journal', subtype: 'clinical_trial', classification: null,
+      status: 'approved', major_version: 1, minor_version: 0,
+      related_products: [], countries: null,
+      language: 'English', therapeutic_area_diseases: [],
+      category: 'Efficacy', topic: 'Clinical Trial Results',
+      owner: 'imported', created_by: 'imported',
+      created_at: Date.now(), expires_at: Date.now() + 31536000000, off_label: false,
+      _source: r.db,       // 'PubMed' or 'Embase'
+      _free: r.free,
+      _purchased: r.purchased || false,
+      _url: r.url
+    };
+    sampleDocuments.unshift(newDoc);
+    selectedDocs.add(newDoc.document_id);
+  });
+  updateSelectionUI();
+  // Reset status filter so newly added docs are visible
+  document.getElementById('filterStatus').value = '';
+  applyFilters();
+  let msg = '';
+  if (selected.length) msg += `✅ **${selected.length} document${selected.length > 1 ? 's' : ''} added** from ${currentDb === 'pubmed' ? 'PubMed' : 'Embase'}:\n${selected.map(r => '• ' + r.title).join('\n')}`;
+  if (locked.length) msg += (msg ? '\n\n' : '') + `🔒 **${locked.length} article${locked.length > 1 ? 's' : ''} skipped** — full text requires purchase:\n${locked.map(r => '• ' + r.title).join('\n')}`;
+  if (msg) addChatMessage('assistant', msg);
+}
+
+function handleFileSelect(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  files.forEach(f => {
+    const newDoc = {
+      document_id: Date.now() + Math.random(),
+      version_id: Date.now(),
+      name: f.name.replace(/\.[^.]+$/, '').replace(/\s+/g, '_'),
+      title: f.name.replace(/\.[^.]+$/, ''),
+      number: 'UPLOAD-' + Date.now(),
+      type: 'scientific_journal', subtype: null, classification: null,
+      status: 'draft', major_version: 1, minor_version: 0,
+      related_products: [], countries: null,
+      language: 'English', therapeutic_area_diseases: [],
+      category: '', topic: '',
+      owner: 'you', created_by: 'you',
+      created_at: Date.now(), expires_at: Date.now() + 31536000000, off_label: false
+    };
+    sampleDocuments.push(newDoc);
+  });
+  closeAddDocDialog();
+  applyFilters();
+  addChatMessage('assistant', `📎 **${files.length} file${files.length > 1 ? 's' : ''} uploaded** and added as draft source documents:\n${files.map(f => '• ' + f.name).join('\n')}`);
+}
+
+function handleDropzoneDrop(e) {
+  e.preventDefault();
+  document.getElementById('addDocDropzone').classList.remove('dragover');
+  const files = Array.from(e.dataTransfer.files);
+  if (!files.length) return;
+  files.forEach(f => {
+    sampleDocuments.push({
+      document_id: Date.now() + Math.random(), version_id: Date.now(),
+      name: f.name.replace(/\.[^.]+$/, ''), title: f.name.replace(/\.[^.]+$/, ''),
+      number: 'UPLOAD-' + Date.now(), type: 'scientific_journal',
+      status: 'draft', major_version: 1, minor_version: 0,
+      related_products: [], countries: null, language: 'English',
+      therapeutic_area_diseases: [], category: '', topic: '',
+      owner: 'you', created_by: 'you',
+      created_at: Date.now(), expires_at: Date.now() + 31536000000, off_label: false
+    });
+  });
+  closeAddDocDialog();
+  applyFilters();
+  addChatMessage('assistant', `📎 **${files.length} file${files.length > 1 ? 's' : ''} dropped** and added as draft source documents.`);
+}
+</script>
+</body>
+</html>
