@@ -115,7 +115,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 110px);
+  height: calc(100vh - 32px);
 }
 .dialog-header {
   background: var(--secondary-50);
@@ -1377,7 +1377,7 @@ body {
 <!-- ============================================ -->
 <!-- INSTRUCTIONS BANNER                          -->
 <!-- ============================================ -->
-<div id="instructions-banner">
+<div id="instructions-banner" style="display:none;">
   <h3>📋 How to Use This Prototype</h3>
   <ol>
     <li><strong>Column 1 (Left)</strong>: Search and select source documents using checkboxes</li>
@@ -1897,6 +1897,36 @@ function renderConfigForm() {
       </div>
       ${productsField}
       <div class="form-group">
+        <label>Sections</label>
+        <div class="multiselect-wrap" id="srdSectionsWrap">
+          <div class="multiselect-trigger" onclick="toggleMultiselectById('srdSectionsDropdown')">
+            <span id="srdSectionsLabel">Select sections…</span>
+            <span class="multiselect-caret">▾</span>
+          </div>
+          <div class="multiselect-dropdown" id="srdSectionsDropdown">
+            ${['Executive Summary','Introduction','Study design','Primary and Secondary Endpoints','Efficacy Results','Safety Results','Conclusion'].map(s => `
+            <label class="multiselect-option">
+              <input type="checkbox" value="${s}" onchange="updateMultiselectLabel('srdSectionsDropdown', 'srdSectionsLabel')"> ${s}
+            </label>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Study data</label>
+        <div class="multiselect-wrap" id="srdStudyDataWrap">
+          <div class="multiselect-trigger" onclick="toggleMultiselectById('srdStudyDataDropdown')">
+            <span id="srdStudyDataLabel">Select study data option…</span>
+            <span class="multiselect-caret">▾</span>
+          </div>
+          <div class="multiselect-dropdown" id="srdStudyDataDropdown">
+            ${['Separate Studies -EBM','Combine studies'].map(s => `
+            <label class="multiselect-option">
+              <input type="checkbox" value="${s}" onchange="updateMultiselectLabel('srdStudyDataDropdown', 'srdStudyDataLabel')"> ${s}
+            </label>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
         <label>Language</label>
         <select class="form-select" id="docLang">
           <option value="English">English</option>
@@ -2013,17 +2043,34 @@ function toggleMultiselect() {
   const dd = document.getElementById('sectionsDropdown');
   if (dd) dd.classList.toggle('open');
 }
+function toggleMultiselectById(dropdownId) {
+  const dd = document.getElementById(dropdownId);
+  if (dd) dd.classList.toggle('open');
+}
 document.addEventListener('click', e => {
-  const wrap = document.getElementById('sectionsWrap');
-  if (wrap && !wrap.contains(e.target)) {
-    const dd = document.getElementById('sectionsDropdown');
-    if (dd) dd.classList.remove('open');
-  }
+  // Close all multiselect dropdowns when clicking outside
+  const allWraps = document.querySelectorAll('.multiselect-wrap');
+  allWraps.forEach(wrap => {
+    if (!wrap.contains(e.target)) {
+      const dd = wrap.querySelector('.multiselect-dropdown');
+      if (dd) dd.classList.remove('open');
+    }
+  });
 });
 function updateSectionsLabel() {
   const checked = [...document.querySelectorAll('#sectionsDropdown input:checked')].map(el => el.value);
   const label = document.getElementById('sectionsLabel');
   if (label) label.textContent = checked.length ? checked.join(', ') : 'Select sections…';
+}
+function updateMultiselectLabel(dropdownId, labelId) {
+  const checked = [...document.querySelectorAll(`#${dropdownId} input:checked`)].map(el => el.value);
+  const label = document.getElementById(labelId);
+  if (label) {
+    const defaultText = labelId.includes('SrdSections') ? 'Select sections…' :
+                        labelId.includes('SrdStudyData') ? 'Select study data option…' :
+                        'Select options…';
+    label.textContent = checked.length ? checked.join(', ') : defaultText;
+  }
 }
 
 function updateSourceSummary() {
