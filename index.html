@@ -1319,6 +1319,16 @@ body {
 }
 .preview-content::-webkit-scrollbar { width: 6px; }
 .preview-content::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+.preview-content iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+.preview-content:has(iframe) {
+  padding: 0;
+  overflow: hidden;
+}
 .preview-content h1 { font-size: 22px; font-weight: 600; margin: 0 0 12px; color: var(--text-high); }
 .preview-content h2 { font-size: 17px; font-weight: 600; margin: 20px 0 8px; color: var(--secondary-700); border-bottom: 1px solid var(--outline); padding-bottom: 4px; }
 .preview-content h3 { font-size: 15px; font-weight: 600; margin: 14px 0 6px; }
@@ -1533,7 +1543,7 @@ body {
       <div class="preview-panel" id="previewPanel" style="display:flex;">
         <div class="preview-toolbar" id="previewToolbar">
           <button class="secondary-action" onclick="alert('Edit Section: In production, this opens a section editor.')">✏️ Edit Section</button>
-          <button class="primary-action" onclick="alert('Download: In production, this downloads a DOCX file.')">⬇️ Download DOCX</button>
+          <button class="primary-action" onclick="downloadDocument()">⬇️ Download DOCX</button>
           <button class="secondary-action" onclick="alert('Save to CMS: In production, this saves as a new CMS document.')">💾 Save to CMS</button>
           <button class="secondary-action" onclick="alert('Share: In production, this opens sharing options.')">🔗 Share</button>
         </div>
@@ -1748,6 +1758,7 @@ let isGenerating = false;
 let generationTimer = null;
 let generatedDocMarkdown = '';
 let chatHistory = [];
+let showPdfPreview = false;
 
 /* ============================================ */
 /* COLUMN 1 LOGIC                               */
@@ -1935,7 +1946,6 @@ function renderConfigForm() {
           <option value="Spanish">Spanish</option>
         </select>
       </div>
-      <div class="validation-msg info">ℹ️ Expected sources: Scientific Journals (minimum 1)</div>
     `;
   } else if (generationType === 'component') {
     form.innerHTML = `
@@ -2122,6 +2132,7 @@ function validateForm() {
   const title = titleEl ? titleEl.value.trim() : '';
   let valid = true;
   let warnings = [];
+  let infos = [];
 
   if (!generationType) { valid = false; }
 
@@ -2140,17 +2151,27 @@ function validateForm() {
   if (generationType === 'srd') {
     const docs = sampleDocuments.filter(d => selectedDocs.has(d.document_id));
     const hasJournal = docs.some(d => d.type === 'scientific_journal');
-    if (selectedDocs.size > 0 && !hasJournal) {
+
+    // Show info or warning based on journal selection status
+    if (selectedDocs.size === 0) {
+      infos.push('Expected sources: Scientific Journals (minimum 1)');
+    } else if (!hasJournal) {
       warnings.push('SRD generation requires at least one Scientific Journal.');
       valid = false;
     }
+
     const hasExpired = docs.some(d => d.status === 'expired' || d.status === 'in-review');
     if (hasExpired) {
       warnings.push('Some selected documents are not approved. Proceed with caution.');
     }
   }
 
-  if (area) area.innerHTML = warnings.map(w => `<div class="validation-msg warning">⚠️ ${w}</div>`).join('');
+  // Render both info and warning messages
+  if (area) {
+    const infoHtml = infos.map(i => `<div class="validation-msg info">ℹ️ ${i}</div>`).join('');
+    const warningHtml = warnings.map(w => `<div class="validation-msg warning">⚠️ ${w}</div>`).join('');
+    area.innerHTML = infoHtml + warningHtml;
+  }
   btn.disabled = !valid;
 }
 
@@ -2219,6 +2240,30 @@ function finishGeneration(title) {
   const selectedDocsList = sampleDocuments.filter(d => selectedDocs.has(d.document_id));
   const refs = selectedDocsList.map((d, i) => `[${i+1}] ${d.title} (${d.number})`).join('\n');
 
+  // Check if we should display PDF based on form configuration (ignore title)
+  const productEl = document.getElementById('product');
+  const product = productEl ? productEl.value : '';
+
+  // Check sections - all 7 must be selected
+  const sectionsDropdown = document.getElementById('srdSectionsDropdown');
+  const sectionsChecked = sectionsDropdown ?
+    sectionsDropdown.querySelectorAll('input[type="checkbox"]:checked').length : 0;
+
+  // Check study data - "Combine studies" must be selected
+  const studyDataDropdown = document.getElementById('srdStudyDataDropdown');
+  const studyDataCheckboxes = studyDataDropdown ?
+    Array.from(studyDataDropdown.querySelectorAll('input[type="checkbox"]')) : [];
+  const combineStudiesSelected = studyDataCheckboxes.some(cb =>
+    cb.checked && cb.value === 'Combine studies'
+  );
+
+  // Show PDF if: Vaccine A + All 7 sections + Combine studies
+  if (product === 'vaccine_a' && sectionsChecked === 7 && combineStudiesSelected) {
+    showPdfPreview = true;
+  } else {
+    showPdfPreview = false;
+  }
+
   generatedDocMarkdown = `# ${title}
 
 ## Executive Summary
@@ -2281,6 +2326,9 @@ ${refs}
   // Render preview
   renderPreview();
 
+  // Switch to preview tab to show the document
+  switchTab('preview');
+
   // Add success message to chat
   addChatMessage('assistant', `✅ **Your document "${title}" is ready!**\n\nI've generated a comprehensive ${generationType === 'srd' ? 'SRD' : 'Component'} document based on ${selectedDocsList.length} source ${selectedDocsList.length === 1 ? 'document' : 'documents'}. You can:\n\n• Switch to the **Preview** tab to see the formatted document\n• Ask me to revise, expand, or refine any section\n• Download the document as DOCX\n\nTry asking: *"Expand the safety section"* or *"Add a table comparing trial results"*`);
 
@@ -2290,10 +2338,31 @@ ${refs}
 
 function renderPreview() {
   const content = document.getElementById('previewContent');
-  if (typeof marked !== 'undefined') {
-    content.innerHTML = marked.parse(generatedDocMarkdown);
+
+  // Check if we should display PDF
+  if (showPdfPreview) {
+    content.innerHTML = '<iframe src="Safety of mRNA COVID-19 Vaccines during Pregnancy.pdf" width="100%" height="100%" style="border: none;"></iframe>';
   } else {
-    content.innerHTML = '<pre style="white-space:pre-wrap;">' + generatedDocMarkdown + '</pre>';
+    // Default markdown rendering
+    if (typeof marked !== 'undefined') {
+      content.innerHTML = marked.parse(generatedDocMarkdown);
+    } else {
+      content.innerHTML = '<pre style="white-space:pre-wrap;">' + generatedDocMarkdown + '</pre>';
+    }
+  }
+}
+
+function downloadDocument() {
+  // If PDF preview is active, download the DOCX file
+  if (showPdfPreview) {
+    const link = document.createElement('a');
+    link.href = 'Safety of mRNA COVID-19 Vaccines during Pregnancy.docx';
+    link.download = 'Safety of mRNA COVID-19 Vaccines during Pregnancy.docx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else {
+    alert('Download: In production, this downloads a DOCX file.');
   }
 }
 
