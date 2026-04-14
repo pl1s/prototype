@@ -4,140 +4,152 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Safety of mRNA COVID-19 Vaccines during Pregnancy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --secondary-50: #f1f3fe;
+        --secondary-700: #434c90;
+        --outline: rgba(0, 0, 0, 0.12);
+        --text-high: rgba(0, 0, 0, 0.87);
+      }
       * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
       }
       body {
-        font-family: "Georgia", serif;
-        font-size: 15px;
-        line-height: 1.75;
-        color: #1a1a2e;
-        background: #f4f6fb;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--text-high);
+        background: #fff;
+        padding: 16px;
       }
       .page-wrap {
-        max-width: 860px;
-        margin: 40px auto;
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
-        padding: 56px 64px 64px;
+        max-width: 100%;
+        margin: 0;
+        background: transparent;
+        padding: 0;
       }
-      .doc-title {
-        font-size: 1.2rem;
-        font-weight: 700;
-        color: #0a3d62;
-        border-bottom: 3px solid #1e88e5;
-        padding-bottom: 14px;
-        margin-bottom: 32px;
-        line-height: 1.3;
+      .doc-title,
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        margin: 0 0 12px;
+        color: var(--text-high);
       }
       h2 {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #0a3d62;
-        margin-top: 36px;
-        margin-bottom: 10px;
-        letter-spacing: 0.01em;
-        border-left: 4px solid #1e88e5;
-        padding-left: 12px;
+        font-size: 17px;
+        font-weight: 600;
+        margin: 20px 0 8px;
+        color: var(--secondary-700);
+        border-bottom: 1px solid var(--outline);
+        padding-bottom: 4px;
+        border-left: none;
+        padding-left: 0;
+        letter-spacing: normal;
+      }
+      h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 14px 0 6px;
       }
       p {
-        margin-bottom: 14px;
-        text-align: justify;
+        margin-bottom: 10px;
+        text-align: left;
+      }
+      ul, ol {
+        margin: 8px 0 10px 20px;
+      }
+      li {
+        margin-bottom: 4px;
       }
       sup {
-        color: #1e88e5;
-        font-size: 0.72em;
-        font-weight: 600;
+        color: var(--secondary-700);
+        font-size: 0.75em;
+        font-weight: 500;
       }
       .figure-block {
-        margin: 28px auto;
+        margin: 16px 0;
         text-align: center;
-        background: #f0f4fc;
-        border: 1px solid #cfe0f7;
-        border-radius: 8px;
-        padding: 20px 16px 14px;
+        padding: 12px;
       }
       .figure-block img {
         max-width: 100%;
         height: auto;
-        border-radius: 4px;
       }
       .figure-caption {
-        margin-top: 10px;
-        font-size: 0.88rem;
-        color: #444;
+        margin-top: 8px;
+        font-size: 13px;
+        color: var(--text-high);
         font-style: italic;
       }
       /* Tables */
       .table-wrapper {
-        margin: 20px 0 28px;
+        margin: 12px 0;
         overflow-x: auto;
       }
       .table-title {
-        font-size: 0.92rem;
-        font-weight: 700;
-        color: #0a3d62;
-        margin-bottom: 7px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-high);
+        margin-bottom: 6px;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.9rem;
+        margin: 12px 0;
+        font-size: 13px;
       }
-      thead tr {
-        background: #0a3d62;
-        color: #fff;
-      }
-      thead th {
-        padding: 10px 14px;
+      th, td {
+        padding: 8px 10px;
+        border: 1px solid var(--outline);
         text-align: left;
-        font-weight: 700;
       }
-      tbody tr:nth-child(odd) {
-        background: #f0f4fc;
+      th {
+        background: var(--secondary-50);
+        font-weight: 600;
+        font-size: 12px;
       }
-      tbody tr:nth-child(even) {
+      tbody tr {
         background: #fff;
       }
       tbody td {
-        padding: 9px 14px;
-        border-bottom: 1px solid #dde6f5;
         vertical-align: top;
       }
       .sig {
-        color: #c0392b;
-        font-weight: 700;
+        color: #d32f2f;
+        font-weight: 600;
+      }
+      strong {
+        font-weight: 600;
       }
       /* References */
       .references {
-        margin-top: 36px;
-        padding-top: 18px;
-        border-top: 2px solid #dde6f5;
+        margin-top: 24px;
+        padding-top: 12px;
+        border-top: 1px solid var(--outline);
       }
       .references h2 {
         margin-top: 0;
       }
       ol.refs {
-        padding-left: 24px;
-        margin-top: 10px;
+        padding-left: 20px;
+        margin-top: 8px;
       }
       ol.refs li {
-        margin-bottom: 10px;
-        font-size: 0.88rem;
-        color: #333;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--text-high);
       }
       em {
         font-style: italic;
       }
       .note-sig {
-        font-size: 0.82rem;
-        color: #666;
-        margin-top: -10px;
-        margin-bottom: 14px;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.6);
+        margin-top: -8px;
+        margin-bottom: 10px;
       }
     </style>
   </head>
